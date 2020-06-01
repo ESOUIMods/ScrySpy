@@ -36,8 +36,8 @@ local PIN_NAME = "Dig Location"
 dig_site_names = {
 ["en"] = "Dig Site",
 ["fr"] = "Site De fouilles",
-["de"] = "Ausgrabungsst�tte",
-["ru"] = "Dig Site",
+["de"] = "Ausgrabungsstätte",
+["ru"] = "Место раскопок",
 }
 
 loc_index = {
