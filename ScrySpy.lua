@@ -152,7 +152,24 @@ local function InitializePins()
         end
         if mapData then
             for index, pinData in pairs(mapData) do
-                LMP:CreatePin(PIN_TYPE, pinData, pinData[loc_index.x_pos], pinData[loc_index.y_pos])
+                local goOn = true
+                local i = 0
+                while goOn do
+                    i = i +1
+                    local name =  "ZO_PinPolygonBlob" .. tostring(i)
+                    if _G[name] ~= nil then
+                        local ctrl = WINDOW_MANAGER:GetControlByName(name)
+                        --d(name)
+                        --d(ctrl)
+                        if ctrl:IsPointInside(pinData[loc_index.x_pos], pinData[loc_index.y_pos]) then
+                            LMP:CreatePin(PIN_TYPE, pinData, pinData[loc_index.x_pos], pinData[loc_index.y_pos])
+                        else
+                            d("notinside")
+                        end
+                    else
+                        goOn = false
+                    end
+                end
             end
         end
     end
