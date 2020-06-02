@@ -15,8 +15,8 @@ local dig_site_pin, frame, center
 ---------------------------------------
 
 client_lang = GetCVar("language.2")
-if ScrySpy_SavedVars == nil then ScrySpy_SavedVars = {} end
-if ScrySpy_SavedVars.location_info == nil then ScrySpy_SavedVars.location_info = {} end
+ScrySpy_SavedVars = ScrySpy_SavedVars or { }
+ScrySpy_SavedVars.location_info = ScrySpy_SavedVars.location_info or { }
 ScrySpy_SavedVars.show_pins = ScrySpy_SavedVars.show_pins or true
 ScrySpy_SavedVars.pin_level = ScrySpy_SavedVars.pin_level or 30
 ScrySpy_SavedVars.pin_size = ScrySpy_SavedVars.pin_size or 25
@@ -85,6 +85,7 @@ end
 ---------------------------------------
 ----- ScrySpy                     -----
 ---------------------------------------
+ScrySpy.worldControlPool = ZO_ControlPool:New("ScrySpy_WorldPin", ScrySpy_WorldPins)
 
 local function get_digsite_loc_sv(zone_id, zone)
     --d(zone)
@@ -122,31 +123,34 @@ local function save_dig_site_location()
     local x_pos, y_pos = GetMapPlayerPosition("player")
     local x_gps, y_gps = GPS:LocalToGlobal(x_pos, y_pos)
     local zone_id, worldX, worldZ, worldY = GetUnitWorldPosition("player")
-    local location = {}
-    local zone = LMP:GetZoneAndSubzone(true, false, true)
-    location[loc_index.x_pos] = x_pos
-    location[loc_index.y_pos] = y_pos
-    location[loc_index.x_gps] = x_gps
-    location[loc_index.y_gps] = y_gps
-    location[loc_index.worldX] = worldX
-    location[loc_index.worldY] = worldY
-    location[loc_index.worldZ] = worldZ
 
-    if ScrySpy_SavedVars.location_info == nil then ScrySpy_SavedVars.location_info = {} end
-    if ScrySpy_SavedVars.location_info[zone_id] == nil then ScrySpy_SavedVars.location_info[zone_id] = {} end
-    if ScrySpy_SavedVars.location_info[zone_id][zone] == nil then ScrySpy_SavedVars.location_info[zone_id][zone] = {} end
+
+    local zone = LMP:GetZoneAndSubzone(true, false, true)
+    -- if ScrySpy_SavedVars.location_info == nil then ScrySpy_SavedVars.location_info = {} end
+    -- not needed, because it's already created above
+    ScrySpy_SavedVars.location_info[zone_id] = ScrySpy_SavedVars.location_info[zone_id] or { }
+    ScrySpy_SavedVars.location_info[zone_id][zone] = ScrySpy_SavedVars.location_info[zone_id][zone] or { }
 
     if ScrySpy.dig_sites == nil then ScrySpy.dig_sites = {} end
     if ScrySpy.dig_sites[zone_id] == nil then ScrySpy.dig_sites[zone_id] = {} end
     if ScrySpy.dig_sites[zone_id][zone] == nil then ScrySpy.dig_sites[zone_id][zone] = {} end
 
-    dig_sites_table = get_digsite_locations(zone_id, zone)
+    local dig_sites_table = get_digsite_locations(zone_id, zone)
     if is_empty_or_nil(dig_sites_table) then dig_sites_table = {} end
 
 
-    dig_sites_sv_table = get_digsite_loc_sv(zone_id, zone)
+    local dig_sites_sv_table = get_digsite_loc_sv(zone_id, zone)
     if is_empty_or_nil(dig_sites_sv_table) then dig_sites_sv_table = {} end
 
+    local location = {
+        loc_index.x_pos = x_pos
+        loc_index.y_pos = y_pos
+        loc_index.x_gps = x_gps
+        loc_index.y_gps = y_gps
+        loc_index.worldX = worldX
+        loc_index.worldY = worldY
+        loc_index.worldZ = worldZ
+    }
     if save_to_sv(dig_sites_table, location) and save_to_sv(dig_sites_sv_table, location) then
         --d("saving location")
         table.insert(ScrySpy_SavedVars.location_info[zone_id][zone], location)
@@ -161,67 +165,56 @@ end
 ---------------------------------------
 ----- Lib3D                       -----
 ---------------------------------------
-function get_player_3d_position(worldX, worldZ, worldY)
-	return worldX/100, worldY/100, worldZ/100
+local function Hide3DPins()
+    -- remove the on update handler and hide the mage dig_site_pin
+    EVENT_MANAGER:UnregisterForUpdate("DigSite")
+    ScrySpy_WorldPins:SetHidden(true)
+    ScrySpy.worldControlPool:ReleaseAllObjects()
 end
 
-function Hide3DPins()
-	-- remove the on update handler and hide the mage dig_site_pin
-	EVENT_MANAGER:UnregisterForUpdate("DigSite")
-	dig_site_pin:SetHidden(true)
-	frame:SetHidden(true)
-	center:SetHidden(true)
-end
+local function Draw3DPins()
+    EVENT_MANAGER:UnregisterForUpdate("DigSite")
 
-function Draw3DPins()
-	dig_site_pin:SetHidden(false)
-	frame:SetHidden(false)
-	center:SetHidden(false)
-    local zone_id, worldX, worldZ, worldY = GetUnitWorldPosition("player")
+    local zone_id = GetUnitWorldPosition("player") -- there is a better way to get zone_id
     local zone = LMP:GetZoneAndSubzone(true, false, true)
 
+    local pseudo_pin_location = get_digsite_loc_sv(zone_id, zone)
+    if pseudo_pin_location then
+        local worldX, worldZ, worldY = WorldPositionToGuiRender3DPosition(0,0,0)
+        if not worldX then return end
+        ScrySpy_WorldPins:Set3DRenderSpaceOrigin(worldX, worldZ, worldY)
+        ScrySpy_WorldPins:SetHidden(false)
 
-	EVENT_MANAGER:UnregisterForUpdate("DigSite")
-	-- perform the following every single frame
-	EVENT_MANAGER:RegisterForUpdate("DigSite", 0, function(time)
+        for pin, pinData in ipairs(pseudo_pin_location) do
+            local pinControl = ScrySpy.worldControlPool:AcquireObject(pin)
+            if not pinControl:Has3DRenderSpace() then
+                pinControl:Create3DRenderSpace()
+                local size = 1
+                pin:Set3DRenderSpaceOrigin(0, size + 0.125 * size + 0.25, 0)
+                pin:Set3DLocalDimensions(0.25 * size + 0.5, 0.25 * size + 0.5)
+                pin:Set3DRenderSpaceUsesDepthBuffer(true)
+            end
+        end
 
-		local x, y, z, forwardX, forwardY, forwardZ, rightX, rightY, rightZ, upX, upY, upZ = Lib3D:GetCameraRenderSpace()
+        local activeObjects = ScrySpy.worldControlPool:GetActiveObjects()
 
-		-- align the dig_site_pin with the camera's render space so the dig_site_pin is always facing the camera
-		dig_site_pin:Set3DRenderSpaceForward(forwardX, forwardY, forwardZ)
-		dig_site_pin:Set3DRenderSpaceRight(rightX, rightY, rightZ)
-		dig_site_pin:Set3DRenderSpaceUp(upX, upY, upZ)
+        -- don't do that every single frame. it's not necessary
+        EVENT_MANAGER:RegisterForUpdate("DigSite", 100, function()
+            local x, y, z, forwardX, forwardY, forwardZ, rightX, rightY, rightZ, upX, upY, upZ = Lib3D:GetCameraRenderSpace()
+            for key, pinControl in pairs(activeObjects) do
+                pinControl:Set3DRenderSpaceForward(forwardX, forwardY, forwardZ)
+                pinControl:Set3DRenderSpaceRight(rightX, rightY, rightZ)
+                pinControl:Set3DRenderSpaceUp(upX, upY, upZ)
+            end
 
-        -- local worldX, worldY, worldZ = Lib3D:ComputePlayerRenderSpacePosition()
-
-		-- get the player position, so we can place the dig_site_pin nearby
-        pseudo_pin_location = get_digsite_loc_sv(zone_id, zone)
-		local worldX = pseudo_pin_location[1][loc_index.worldX]
-		local worldY = pseudo_pin_location[1][loc_index.worldY]
-		local worldZ = pseudo_pin_location[1][loc_index.worldZ]
-
-        worldX, worldY, worldZ = WorldPositionToGuiRender3DPosition(worldX, worldZ, worldY)
-
-		if not worldX then return end
-		-- this creates the circling motion around the player
-		--local time = GetFrameTimeSeconds()
-		--worldX = worldX + math.sin(time)
-		--worldZ = worldZ + math.cos(time)
-		--worldY = worldY + 2.0 + 0.5 * math.sin(0.5 * time)
-		ScrySpy_WorldPins:Set3DRenderSpaceOrigin(worldX, worldY + 2.0 , worldZ)
-
-		-- add a pulsing animation
-		--center:SetAlpha(math.sin(2 * time) * 0.25 + 0.75)
-		--frame:Set3DLocalDimensions(time % 1, time % 1)
-		--frame:SetAlpha(1 - (time % 1))
-
-	end)
+        end)
+    end
 end
 
 local function OnInteract(event_code, client_interact_result, interact_target_name)
     --d(event_code)
     --d(client_interact_result)
-    text = zo_strformat(SI_CHAT_MESSAGE_FORMATTER, interact_target_name)
+    local text = zo_strformat(SI_CHAT_MESSAGE_FORMATTER, interact_target_name)
     --d(text)
     --d("OnInteract")
     if text == dig_site_names[client_lang] then
@@ -233,18 +226,19 @@ EVENT_MANAGER:RegisterForEvent(AddonName,EVENT_CLIENT_INTERACT_RESULT, OnInterac
 local function InitializePins()
     local function MapPinAddCallback(pinType)
         local zone = LMP:GetZoneAndSubzone(true, false, true)
-        local zone_id, worldX, worldZ, worldY = GetUnitWorldPosition("player")
-        local mapData = ScrySpy.dig_sites[zone_id][zone]
-        if is_empty_or_nil(mapData) then mapData = {} end
-        if ScrySpy_SavedVars.location_info == nil then ScrySpy_SavedVars.location_info = {} end
-        if ScrySpy_SavedVars.location_info[zone_id] == nil then ScrySpy_SavedVars.location_info[zone_id] = {} end
-        if ScrySpy_SavedVars.location_info[zone_id][zone] == nil then ScrySpy_SavedVars.location_info[zone_id][zone] = {} end
-        dig_sites_sv_table = get_digsite_loc_sv(zone_id, zone)
-        if is_empty_or_nil(dig_sites_sv_table) then dig_sites_sv_table = {} end
-        --d(dig_sites_sv_table)
-        for num_entry, digsite_loc in ipairs(dig_sites_sv_table) do
-            if save_to_sv(mapData, digsite_loc) then
-                table.insert(mapData, digsite_loc)
+        local zone_id = GetUnitWorldPosition("player") -- there is a better way to get zone_id
+
+        ScrySpy_SavedVars.location_info = ScrySpy_SavedVars.location_info or { }
+        ScrySpy_SavedVars.location_info[zone_id] = ScrySpy_SavedVars.location_info[zone_id] or { }
+        ScrySpy_SavedVars.location_info[zone_id][zone] = ScrySpy_SavedVars.location_info[zone_id][zone] or { }
+
+        local mapData = ScrySpy.dig_sites[zone_id][zone] or { }
+        local dig_sites_sv_table = get_digsite_loc_sv(zone_id, zone) or { }
+        if next(dig_sites_sv_table) then
+            for num_entry, digsite_loc in ipairs(dig_sites_sv_table) do
+                if save_to_sv(mapData, digsite_loc) then
+                    table.insert(mapData, digsite_loc)
+                end
             end
         end
         if mapData then
@@ -292,7 +286,6 @@ end
 local function OnPlayerActivated(eventCode)
     InitializePins()
     EVENT_MANAGER:UnregisterForEvent(AddonName.."_InitPins", EVENT_PLAYER_ACTIVATED)
-    ScrySpy.worldControlPool = ZO_ControlPool:New("ScrySpy_WorldPin", ScrySpy_WorldPins, "ScrySpy_WorldPin")
 end
 EVENT_MANAGER:RegisterForEvent(AddonName.."_InitPins", EVENT_PLAYER_ACTIVATED, OnPlayerActivated)
 
@@ -307,38 +300,16 @@ local function OnLoad(eventCode,addonName)
     HUD_SCENE:AddFragment(fragment)
     LOOT_SCENE:AddFragment(fragment)
 
-	-- register a callback, so we know when to start/stop displaying the dig_site_pin
-	Lib3D:RegisterWorldChangeCallback("DigSite", function(identifier, zoneIndex, isValidZone, newZone)
-		if not newZone then return end
+    -- register a callback, so we know when to start/stop displaying the dig_site_pin
+    Lib3D:RegisterWorldChangeCallback("DigSite", function(identifier, zoneIndex, isValidZone, newZone)
+        if not newZone then return end
 
-		if isValidZone then
-			Draw3DPins()
-		else
-			Hide3DPins()
-		end
-	end)
-	-- create the dig_site_pin
-	-- we have one parent control (dig_site_pin) which we will move around the player
-	-- and two child controls for the dig_site_pin's center and a periodically pulsing sphere
-	dig_site_pin = WINDOW_MANAGER:CreateControl(nil, ScrySpy_WorldPins, CT_CONTROL)
-	center = WINDOW_MANAGER:CreateControl(nil, dig_site_pin, CT_TEXTURE)
-	frame = WINDOW_MANAGER:CreateControl(nil, dig_site_pin, CT_TEXTURE)
-
-	-- make the control 3 dimensional
-	dig_site_pin:Create3DRenderSpace()
-	frame:Create3DRenderSpace()
-	center:Create3DRenderSpace()
-
-	-- set texture, size and enable the depth buffer so the dig_site_pin is hidden behind world objects
-	center:SetTexture("ScrySpy/img/spade-icon.dds")
-	center:Set3DLocalDimensions(0.5, 0.5)
-	center:Set3DRenderSpaceUsesDepthBuffer(true)
-	center:Set3DRenderSpaceOrigin(0,0,0.1)
-
-	frame:SetTexture("ScrySpy/img/spade-icon.dds")
-	frame:Set3DLocalDimensions(0.5, 0.5)
-	frame:Set3DRenderSpaceOrigin(0,0,0)
-	frame:Set3DRenderSpaceUsesDepthBuffer(true)
+        if isValidZone then
+            Draw3DPins()
+        else
+            Hide3DPins()
+        end
+    end)
 
 end
 EVENT_MANAGER:RegisterForEvent(AddonName,EVENT_ADD_ON_LOADED,OnLoad)
