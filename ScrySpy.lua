@@ -151,6 +151,7 @@ local function save_dig_site_location()
         --d("saving location")
         table.insert(ScrySpy_SavedVars.location_info[zone], location)
         LMP:RefreshPins(PIN_TYPE)
+        ScrySpy.Draw3DPins()
     end
 end
 
@@ -171,14 +172,14 @@ local function is_in(search_value, search_table)
     return false
 end
 
-local function Hide3DPins()
+function ScrySpy.Hide3DPins()
     -- remove the on update handler and hide the mage dig_site_pin
     EVENT_MANAGER:UnregisterForUpdate("DigSite")
     ScrySpy_WorldPins:SetHidden(true)
     ScrySpy.worldControlPool:ReleaseAllObjects()
 end
 
-local function Draw3DPins()
+function ScrySpy.Draw3DPins()
     EVENT_MANAGER:UnregisterForUpdate("DigSite")
 
     local zone = LMP:GetZoneAndSubzone(true, false, true)
@@ -203,11 +204,12 @@ local function Draw3DPins()
                 end
                 local child_name = textureControl:GetName()
                 if is_in("icon", { child_name } ) then
-                    textureControl:Set3DRenderSpaceOrigin(pinData[loc_index.worldX]/100, (pinData[loc_index.worldY]/100) + 2.0, pinData[loc_index.worldZ]/100)
+                    textureControl:Set3DRenderSpaceOrigin(pinData[loc_index.worldX]/100, (pinData[loc_index.worldY]/100) + 2.5, pinData[loc_index.worldZ]/100)
+                    textureControl:Set3DLocalDimensions(0.30 * size + 0.6, 0.30 * size + 0.6)
                 else
                     textureControl:Set3DRenderSpaceOrigin(pinData[loc_index.worldX]/100, (pinData[loc_index.worldY]/100) + 1.0, pinData[loc_index.worldZ]/100)
+                    textureControl:Set3DLocalDimensions(0.25 * size + 0.75, 0.75 * size + 1.25)
                 end
-                textureControl:Set3DLocalDimensions(0.25 * size + 0.5, 0.25 * size + 0.5)
                 textureControl:Set3DRenderSpaceUsesDepthBuffer(true)
             end
         end
@@ -334,9 +336,9 @@ local function OnLoad(eventCode,addonName)
         if not newZone then return end
 
         if isValidZone then
-            Draw3DPins()
+            ScrySpy.Draw3DPins()
         else
-            Hide3DPins()
+            ScrySpy.Hide3DPins()
         end
     end)
 
