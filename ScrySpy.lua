@@ -161,6 +161,16 @@ end
 ---------------------------------------
 ----- Lib3D                       -----
 ---------------------------------------
+local function is_in(search_value, search_table)
+    for k, v in pairs(search_table) do
+        if search_value == v then return true end
+        if type(search_value) == "string" then
+            if string.find(string.lower(v), string.lower(search_value)) then return true end
+        end
+    end
+    return false
+end
+
 local function Hide3DPins()
     -- remove the on update handler and hide the mage dig_site_pin
     EVENT_MANAGER:UnregisterForUpdate("DigSite")
@@ -190,6 +200,12 @@ local function Draw3DPins()
                 local textureControl = pinControl:GetChild(i)
                 if not textureControl:Has3DRenderSpace() then
                     textureControl:Create3DRenderSpace()
+                end
+                local child_name = textureControl:GetName()
+                if is_in("icon", { child_name } ) then
+                    textureControl:Set3DRenderSpaceOrigin(pinData[loc_index.worldX]/100, (pinData[loc_index.worldY]/100) + 2.0, pinData[loc_index.worldZ]/100)
+                else
+                    textureControl:Set3DRenderSpaceOrigin(pinData[loc_index.worldX]/100, (pinData[loc_index.worldY]/100) + 1.0, pinData[loc_index.worldZ]/100)
                 end
                 textureControl:Set3DLocalDimensions(0.25 * size + 0.5, 0.25 * size + 0.5)
                 textureControl:Set3DRenderSpaceUsesDepthBuffer(true)
