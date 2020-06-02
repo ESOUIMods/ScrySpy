@@ -1,15 +1,16 @@
 <GuiXml>
-	<Controls>
-		<TopLevelControl name="ScrySpy_WorldPins" layer="0" level="0">
-			<Controls>
-				<Control name="$(parent)Measurement" />
-			</Controls>
-		</TopLevelControl>
-		<Control name ="ScrySpy_WorldPin" virtual="true" >
-			<Controls>
-				<Texture name="$(parent)Beam" />
-				<Texture name="$(parent)Icon" />
-			</Controls>
-		</Control>
-	</Controls>
+    <Controls>
+        <TopLevelControl name="ScrySpy_WorldPins" layer="0" level="0" />
+        <Control name="ScrySpy_WorldPin" virtual="true">
+            <Dimensions x="64" y="192" />
+            <Controls>
+                <Texture name="$(parent)Icon" textureFile="ScrySpy/img/spade-icon.dds">
+                    <Dimensions y="64" />
+                </Texture>
+                <Texture name="$(parent)Spike" textureFile="ScrySpy/img/worldMarker.dds">
+                    <Dimensions y="128" />
+                </Texture>
+            </Controls>
+        </Control>
+    </Controls>
 </GuiXml>
