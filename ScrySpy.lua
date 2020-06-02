@@ -2,6 +2,17 @@ local AddonName="ScrySpy"
 
 local LMP = LibMapPins
 local GPS = LibGPS3
+local Lib3D = Lib3D
+
+---------------------------------------
+----- Lib3D Vars                  -----
+---------------------------------------
+
+local dig_site_pin, frame, center
+
+---------------------------------------
+----- ScrySpy Vars                -----
+---------------------------------------
 
 client_lang = GetCVar("language.2")
 ScrySpy = {}
@@ -12,12 +23,9 @@ ScrySpy_SavedVars.pin_level = ScrySpy_SavedVars.pin_level or 30
 ScrySpy_SavedVars.pin_size = ScrySpy_SavedVars.pin_size or 25
 
 local dig_sites={
-    ["elsweyr/elsweyr_base_0"]={
-    {0.682,0.247},{0.685,0.268},{0.438,0.232},{0.445,0.194},{0.416,0.222},{0.356,0.603},{0.348,0.382},
-    },
-    ["skyrim/westernskryim_base_0"]={
-    {0.135,0.360},{0.150,0.340},{0.610,0.288},{0.241,0.641},{0.344,0.268},{0.562,0.644},{0.542,0.654},
-    {0.529,0.649},{0.806,0.562},
+    [1160] = {
+        ["skyrim/westernskryim_base_0"]={
+        },
     },
 }
 
@@ -41,8 +49,13 @@ dig_site_names = {
 }
 
 loc_index = {
-    x_pos  =    1,
-    y_pos  =    2,
+    x_pos  = 1,
+    y_pos  = 2,
+    x_gps  = 3,
+    y_gps  = 4,
+    worldX = 5,
+    worldY = 6,
+    worldZ = 7,
 }
 
 -- Function to check for empty table
@@ -67,25 +80,82 @@ local function is_empty_or_nil(t)
     end
 end
 
-local function get_digsite_locations(zone)
+local function get_digsite_locations(zone_id, zone)
     --d(zone)
-    if is_empty_or_nil(dig_sites[zone]) then
+    --d(zone_id)
+    if is_empty_or_nil(dig_sites[zone_id][zone]) then
         return {}
     else
-        return dig_sites[zone]
+        return dig_sites[zone_id][zone]
     end
 end
 
-local function get_digsite_loc_sv(zone)
+---------------------------------------
+----- Lib3D                       -----
+---------------------------------------
+function Hide3DPins()
+	-- remove the on update handler and hide the mage dig_site_pin
+	EVENT_MANAGER:UnregisterForUpdate("DigSite")
+	dig_site_pin:SetHidden(true)
+	frame:SetHidden(true)
+	center:SetHidden(true)
+end
+
+function Draw3DPins()
+	dig_site_pin:SetHidden(false)
+	frame:SetHidden(false)
+	center:SetHidden(false)
+
+	EVENT_MANAGER:UnregisterForUpdate("DigSite")
+	-- perform the following every single frame
+	EVENT_MANAGER:RegisterForUpdate("DigSite", 0, function(time)
+
+		local x, y, z, forwardX, forwardY, forwardZ, rightX, rightY, rightZ, upX, upY, upZ = Lib3D:GetCameraRenderSpace()
+
+		-- align the dig_site_pin with the camera's render space so the dig_site_pin is always facing the camera
+		dig_site_pin:Set3DRenderSpaceForward(forwardX, forwardY, forwardZ)
+		dig_site_pin:Set3DRenderSpaceRight(rightX, rightY, rightZ)
+		dig_site_pin:Set3DRenderSpaceUp(upX, upY, upZ)
+
+		-- get the player position, so we can place the dig_site_pin nearby
+		local worldX, worldY, worldZ = Lib3D:ComputePlayerRenderSpacePosition()
+		if not worldX then return end
+		-- this creates the circeling motion around the player
+		local time = GetFrameTimeSeconds()
+		worldX = worldX + math.sin(time)
+		worldZ = worldZ + math.cos(time)
+		worldY = worldY + 2.0 + 0.5 * math.sin(0.5 * time)
+		ScrySpy_PinSpace:Set3DRenderSpaceOrigin(worldX, worldY, worldZ)
+
+		-- add a pulsing animation
+		center:SetAlpha(math.sin(2 * time) * 0.25 + 0.75)
+		frame:Set3DLocalDimensions(time % 1, time % 1)
+		frame:SetAlpha(1 - (time % 1))
+
+	end)
+end
+
+---------------------------------------
+----- ScrySpy                     -----
+---------------------------------------
+
+local function get_digsite_loc_sv(zone_id, zone)
     --d(zone)
-    if is_empty_or_nil(ScrySpy_SavedVars.location_info[zone]) then
+    if is_empty_or_nil(ScrySpy_SavedVars.location_info[zone_id][zone]) then
         return {}
     else
-        return ScrySpy_SavedVars.location_info[zone]
+        return ScrySpy_SavedVars.location_info[zone_id][zone]
     end
 end
 
 local function save_to_sv(locations_table, location)
+    --[[
+    This should be the table not the Zone like Skyrim or
+    the ZoneID
+
+    example dig_sites[zone_id][zone] where zone might be
+    ["skyrim/westernskryim_base_0"] and zone_id is 1160
+    ]]--
     local save_location = true
     for num_entry, digsite_loc in ipairs(locations_table) do
         local distance = zo_round(GPS:GetLocalDistanceInMeters(digsite_loc[loc_index.x_pos], digsite_loc[loc_index.y_pos], location[loc_index.x_pos], location[loc_index.y_pos]))
@@ -103,24 +173,36 @@ end
 local function save_dig_site_location()
     --d("save_dig_site_location")
     local x_pos, y_pos = GetMapPlayerPosition("player")
+    local x_gps, y_gps = GPS:LocalToGlobal(x_pos, y_pos)
+    local zone_id, worldX, worldZ, worldY = GetUnitWorldPosition("player")
     local location = {}
     local zone = LMP:GetZoneAndSubzone(true, false, true)
     location[loc_index.x_pos] = x_pos
     location[loc_index.y_pos] = y_pos
-
-    if dig_sites == nil then dig_sites = {} end
-    if dig_sites[zone] == nil then dig_sites[zone] = {} end
-    dig_sites_table = get_digsite_locations(zone)
-    if is_empty_or_nil(dig_sites_table) then dig_sites_table = {} end
+    location[loc_index.x_gps] = x_gps
+    location[loc_index.y_gps] = y_gps
+    location[loc_index.worldX] = worldX
+    location[loc_index.worldY] = worldY
+    location[loc_index.worldZ] = worldZ
 
     if ScrySpy_SavedVars.location_info == nil then ScrySpy_SavedVars.location_info = {} end
-    if ScrySpy_SavedVars.location_info[zone] == nil then ScrySpy_SavedVars.location_info[zone] = {} end
-    dig_sites_sv_table = get_digsite_loc_sv(zone)
+    if ScrySpy_SavedVars.location_info[zone_id] == nil then ScrySpy_SavedVars.location_info[zone_id] = {} end
+    if ScrySpy_SavedVars.location_info[zone_id][zone] == nil then ScrySpy_SavedVars.location_info[zone_id][zone] = {} end
+
+    if dig_sites == nil then dig_sites = {} end
+    if dig_sites[zone_id] == nil then dig_sites[zone_id] = {} end
+    if dig_sites[zone_id][zone] == nil then dig_sites[zone_id][zone] = {} end
+
+    dig_sites_table = get_digsite_locations(zone_id, zone)
+    if is_empty_or_nil(dig_sites_table) then dig_sites_table = {} end
+
+
+    dig_sites_sv_table = get_digsite_loc_sv(zone_id, zone)
     if is_empty_or_nil(dig_sites_sv_table) then dig_sites_sv_table = {} end
 
     if save_to_sv(dig_sites_table, location) and save_to_sv(dig_sites_sv_table, location) then
         --d("saving location")
-        table.insert(ScrySpy_SavedVars.location_info[zone], location)
+        table.insert(ScrySpy_SavedVars.location_info[zone_id][zone], location)
         LMP:RefreshPins(PIN_TYPE)
     end
 end
@@ -144,11 +226,13 @@ EVENT_MANAGER:RegisterForEvent(AddonName,EVENT_CLIENT_INTERACT_RESULT, OnInterac
 local function InitializePins()
     local function MapPinAddCallback(pinType)
         local zone = LMP:GetZoneAndSubzone(true, false, true)
-        local mapData = dig_sites[zone]
+        local zone_id, worldX, worldZ, worldY = GetUnitWorldPosition("player")
+        local mapData = dig_sites[zone_id][zone]
         if is_empty_or_nil(mapData) then mapData = {} end
         if ScrySpy_SavedVars.location_info == nil then ScrySpy_SavedVars.location_info = {} end
-        if ScrySpy_SavedVars.location_info[zone] == nil then ScrySpy_SavedVars.location_info[zone] = {} end
-        dig_sites_sv_table = get_digsite_loc_sv(zone)
+        if ScrySpy_SavedVars.location_info[zone_id] == nil then ScrySpy_SavedVars.location_info[zone_id] = {} end
+        if ScrySpy_SavedVars.location_info[zone_id][zone] == nil then ScrySpy_SavedVars.location_info[zone_id][zone] = {} end
+        dig_sites_sv_table = get_digsite_loc_sv(zone_id, zone)
         if is_empty_or_nil(dig_sites_sv_table) then dig_sites_sv_table = {} end
         --d(dig_sites_sv_table)
         for num_entry, digsite_loc in ipairs(dig_sites_sv_table) do
@@ -198,14 +282,55 @@ local function reset_info()
     ScrySpy_SavedVars.location_info = {}
 end
 
+local function OnPlayerActivated(eventCode)
+    InitializePins()
+    EVENT_MANAGER:UnregisterForEvent(AddonName.."_InitPins", EVENT_PLAYER_ACTIVATED)
+end
+EVENT_MANAGER:RegisterForEvent(AddonName.."_InitPins", EVENT_PLAYER_ACTIVATED, OnPlayerActivated)
+
 local function OnLoad(eventCode,addonName)
-    if addonName == AddonName then
-        EVENT_MANAGER:UnregisterForEvent(AddonName,EVENT_ADD_ON_LOADED)
-        --ScrySpy.SavedVars=ZO_SavedVars:NewAccountWide("ScrySpy_SavedVars",1,nil,scryspy_settings)
+    -- turn the top level control into a 3d control
+    ScrySpy_PinSpace:Create3DRenderSpace()
 
-        InitializePins()
+    -- make sure the control is only shown, when the player can see the world
+    -- i.e. the control is only shown during non-menu scenes
+    local fragment = ZO_SimpleSceneFragment:New(ScrySpy_PinSpace)
+    HUD_UI_SCENE:AddFragment(fragment)
+    HUD_SCENE:AddFragment(fragment)
+    LOOT_SCENE:AddFragment(fragment)
 
-        --SLASH_COMMANDS["/ssreset"] = function() reset_info() end
-    end
+	-- register a callback, so we know when to start/stop displaying the dig_site_pin
+	Lib3D:RegisterWorldChangeCallback("DigSite", function(identifier, zoneIndex, isValidZone, newZone)
+		if not newZone then return end
+
+		if isValidZone then
+			Draw3DPins()
+		else
+			Hide3DPins()
+		end
+	end)
+	-- create the dig_site_pin
+	-- we have one parent control (dig_site_pin) which we will move around the player
+	-- and two child controls for the dig_site_pin's center and a periodically pulsing sphere
+	dig_site_pin = WINDOW_MANAGER:CreateControl(nil, ScrySpy_PinSpace, CT_CONTROL)
+	center = WINDOW_MANAGER:CreateControl(nil, dig_site_pin, CT_TEXTURE)
+	frame = WINDOW_MANAGER:CreateControl(nil, dig_site_pin, CT_TEXTURE)
+
+	-- make the control 3 dimensional
+	dig_site_pin:Create3DRenderSpace()
+	frame:Create3DRenderSpace()
+	center:Create3DRenderSpace()
+
+	-- set texture, size and enable the depth buffer so the dig_site_pin is hidden behind world objects
+	center:SetTexture("ScrySpy/img/spade-icon.dds")
+	center:Set3DLocalDimensions(0.5, 0.5)
+	center:Set3DRenderSpaceUsesDepthBuffer(true)
+	center:Set3DRenderSpaceOrigin(0,0,0.1)
+
+	frame:SetTexture("ScrySpy/img/spade-icon.dds")
+	frame:Set3DLocalDimensions(0.5, 0.5)
+	frame:Set3DRenderSpaceOrigin(0,0,0)
+	frame:Set3DRenderSpaceUsesDepthBuffer(true)
+
 end
 EVENT_MANAGER:RegisterForEvent(AddonName,EVENT_ADD_ON_LOADED,OnLoad)
