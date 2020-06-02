@@ -72,13 +72,12 @@ local function is_empty_or_nil(t)
     end
 end
 
-local function get_digsite_locations(zone_id, zone)
+local function get_digsite_locations(zone)
     --d(zone)
-    --d(zone_id)
-    if is_empty_or_nil(ScrySpy.dig_sites[zone_id][zone]) then
+    if is_empty_or_nil(ScrySpy.dig_sites[zone]) then
         return {}
     else
-        return ScrySpy.dig_sites[zone_id][zone]
+        return ScrySpy.dig_sites[zone]
     end
 end
 
@@ -87,12 +86,12 @@ end
 ---------------------------------------
 ScrySpy.worldControlPool = ZO_ControlPool:New("ScrySpy_WorldPin", ScrySpy_WorldPins)
 
-local function get_digsite_loc_sv(zone_id, zone)
+local function get_digsite_loc_sv(zone)
     --d(zone)
-    if is_empty_or_nil(ScrySpy_SavedVars.location_info[zone_id][zone]) then
+    if is_empty_or_nil(ScrySpy_SavedVars.location_info[zone]) then
         return {}
     else
-        return ScrySpy_SavedVars.location_info[zone_id][zone]
+        return ScrySpy_SavedVars.location_info[zone]
     end
 end
 
@@ -127,18 +126,16 @@ local function save_dig_site_location()
     local zone = LMP:GetZoneAndSubzone(true, false, true)
     -- if ScrySpy_SavedVars.location_info == nil then ScrySpy_SavedVars.location_info = {} end
     -- not needed, because it's already created above
-    ScrySpy_SavedVars.location_info[zone_id] = ScrySpy_SavedVars.location_info[zone_id] or { }
-    ScrySpy_SavedVars.location_info[zone_id][zone] = ScrySpy_SavedVars.location_info[zone_id][zone] or { }
+    ScrySpy_SavedVars.location_info = ScrySpy_SavedVars.location_info or { }
+    ScrySpy_SavedVars.location_info[zone] = ScrySpy_SavedVars.location_info[zone] or { }
 
     if ScrySpy.dig_sites == nil then ScrySpy.dig_sites = {} end
-    if ScrySpy.dig_sites[zone_id] == nil then ScrySpy.dig_sites[zone_id] = {} end
-    if ScrySpy.dig_sites[zone_id][zone] == nil then ScrySpy.dig_sites[zone_id][zone] = {} end
+    if ScrySpy.dig_sites[zone] == nil then ScrySpy.dig_sites[zone] = {} end
 
-    local dig_sites_table = get_digsite_locations(zone_id, zone)
+    local dig_sites_table = get_digsite_locations(zone)
     if is_empty_or_nil(dig_sites_table) then dig_sites_table = {} end
 
-
-    local dig_sites_sv_table = get_digsite_loc_sv(zone_id, zone)
+    local dig_sites_sv_table = get_digsite_loc_sv(zone)
     if is_empty_or_nil(dig_sites_sv_table) then dig_sites_sv_table = {} end
 
     local location = {
@@ -152,7 +149,7 @@ local function save_dig_site_location()
     }
     if save_to_sv(dig_sites_table, location) and save_to_sv(dig_sites_sv_table, location) then
         --d("saving location")
-        table.insert(ScrySpy_SavedVars.location_info[zone_id][zone], location)
+        table.insert(ScrySpy_SavedVars.location_info[zone], location)
         LMP:RefreshPins(PIN_TYPE)
     end
 end
@@ -174,10 +171,9 @@ end
 local function Draw3DPins()
     EVENT_MANAGER:UnregisterForUpdate("DigSite")
 
-    local zone_id = GetUnitWorldPosition("player") -- there is a better way to get zone_id
     local zone = LMP:GetZoneAndSubzone(true, false, true)
 
-    local pseudo_pin_location = get_digsite_loc_sv(zone_id, zone)
+    local pseudo_pin_location = get_digsite_loc_sv(zone)
     if pseudo_pin_location then
         local worldX, worldZ, worldY = WorldPositionToGuiRender3DPosition(0,0,0)
         if not worldX then return end
@@ -232,14 +228,25 @@ EVENT_MANAGER:RegisterForEvent(AddonName,EVENT_CLIENT_INTERACT_RESULT, OnInterac
 local function InitializePins()
     local function MapPinAddCallback(pinType)
         local zone = LMP:GetZoneAndSubzone(true, false, true)
-        local zone_id = GetUnitWorldPosition("player") -- there is a better way to get zone_id
+        --[[
+        Problem encountered. When standing in the ["skyrim/solitudeoutlawsrefuge_0"]
+
+        The Zone ID for that map is 1178 and the mapname is ["skyrim/solitudeoutlawsrefuge_0"]
+
+        If you have the map open and change maps, then the map might be ["craglorn/craglorn_base_0"]
+        but the player, where they are currently standing is still 1178.
+
+        meaning the game will look for 1178 and ["craglorn/craglorn_base_0"] which is invalid
+        ]]--
+        --d(zone)
 
         ScrySpy_SavedVars.location_info = ScrySpy_SavedVars.location_info or { }
-        ScrySpy_SavedVars.location_info[zone_id] = ScrySpy_SavedVars.location_info[zone_id] or { }
-        ScrySpy_SavedVars.location_info[zone_id][zone] = ScrySpy_SavedVars.location_info[zone_id][zone] or { }
+        ScrySpy_SavedVars.location_info[zone] = ScrySpy_SavedVars.location_info[zone] or { }
 
-        local mapData = ScrySpy.dig_sites[zone_id][zone] or { }
-        local dig_sites_sv_table = get_digsite_loc_sv(zone_id, zone) or { }
+        ScrySpy.dig_sites[zone] = ScrySpy.dig_sites[zone] or { }
+
+        local mapData = ScrySpy.dig_sites[zone] or { }
+        local dig_sites_sv_table = get_digsite_loc_sv(zone) or { }
         if next(dig_sites_sv_table) then
             for num_entry, digsite_loc in ipairs(dig_sites_sv_table) do
                 if save_to_sv(mapData, digsite_loc) then
