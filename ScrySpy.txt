@@ -1,11 +1,11 @@
 ## Title: ScrySpy
 ## Description: Adds possible Dig Site information to the map
 ## Author: Sharlikran
-## Version: 1.01
-## AddOnVersion: 101
+## Version: 1.11
+## AddOnVersion: 111
 ## APIVersion: 100031
 ## SavedVariables: ScrySpy_SavedVars
-## DependsOn: LibMapPins-1.0>=10022 LibGPS>=37 Lib3D>=312
+## DependsOn: CustomCompassPins>=31 LibMapPins-1.0>=10022 LibGPS>=37 Lib3D>=312
 
 ; DISCLAIMER:
 ;

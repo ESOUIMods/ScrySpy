@@ -3,6 +3,7 @@ local AddonName="ScrySpy"
 local LMP = LibMapPins
 local GPS = LibGPS3
 local Lib3D = Lib3D
+local CCP = COMPASS_PINS
 
 ---------------------------------------
 ----- Lib3D Vars                  -----
@@ -16,6 +17,7 @@ local dig_site_pin, frame, center
 
 client_lang = GetCVar("language.2")
 ScrySpy_SavedVars = ScrySpy_SavedVars or { }
+ScrySpy_SavedVars.version = ScrySpy_SavedVars.version or 1
 ScrySpy_SavedVars.location_info = ScrySpy_SavedVars.location_info or { }
 ScrySpy_SavedVars.show_pins = ScrySpy_SavedVars.show_pins or true
 ScrySpy_SavedVars.pin_level = ScrySpy_SavedVars.pin_level or 30
@@ -25,13 +27,17 @@ ScrySpy_SavedVars.pin_size = ScrySpy_SavedVars.pin_size or 25
 local scryspy_settings = {
     pin_level=30,
     pin_size=25,
-    show_pins=true
+    show_pins=true,
 }
+
+ScrySpy.compass_max_distance = 0.05
 
 -- Existing Local
 local PIN_TYPE = "pinType_Digsite"
 local PIN_FILTER_NAME = "ScrySpy"
 local PIN_NAME = "Dig Location"
+local custom_compass_pin = "compass_digsite"
+local compass_pin_texture = "/ScrySpy/img/spade-icon.dds"
 
 dig_site_names = {
 ["en"] = "Dig Site",
@@ -151,6 +157,7 @@ local function save_dig_site_location()
         --d("saving location")
         table.insert(ScrySpy_SavedVars.location_info[zone], location)
         LMP:RefreshPins(PIN_TYPE)
+        CCP:RefreshPins(custom_compass_pin)
         ScrySpy.Draw3DPins()
     end
 end
@@ -184,14 +191,15 @@ function ScrySpy.Draw3DPins()
 
     local zone = LMP:GetZoneAndSubzone(true, false, true)
 
-    local pseudo_pin_location = get_digsite_loc_sv(zone)
-    if pseudo_pin_location then
+    local mapData = ScrySpy.get_pin_data(zone) or { }
+    -- pseudo_pin_location
+    if mapData then
         local worldX, worldZ, worldY = WorldPositionToGuiRender3DPosition(0,0,0)
         if not worldX then return end
         ScrySpy_WorldPins:Set3DRenderSpaceOrigin(worldX, worldZ, worldY)
         ScrySpy_WorldPins:SetHidden(false)
 
-        for pin, pinData in ipairs(pseudo_pin_location) do
+        for pin, pinData in ipairs(mapData) do
             local pinControl = ScrySpy.worldControlPool:AcquireObject(pin)
             if not pinControl:Has3DRenderSpace() then
                 pinControl:Create3DRenderSpace()
@@ -243,6 +251,22 @@ local function OnInteract(event_code, client_interact_result, interact_target_na
 end
 EVENT_MANAGER:RegisterForEvent(AddonName,EVENT_CLIENT_INTERACT_RESULT, OnInteract)
 
+function ScrySpy.get_pin_data(zone)
+    ScrySpy_SavedVars.location_info = ScrySpy_SavedVars.location_info or { }
+    ScrySpy_SavedVars.location_info[zone] = ScrySpy_SavedVars.location_info[zone] or { }
+
+    ScrySpy.dig_sites[zone] = ScrySpy.dig_sites[zone] or { }
+
+    local mapData = ScrySpy.dig_sites[zone] or { }
+    local dig_sites_sv_table = get_digsite_loc_sv(zone) or { }
+    for num_entry, digsite_loc in ipairs(dig_sites_sv_table) do
+        if save_to_sv(mapData, digsite_loc) then
+            table.insert(mapData, digsite_loc)
+        end
+    end
+    return mapData
+end
+
 local function InitializePins()
     local function MapPinAddCallback(pinType)
         local zone = LMP:GetZoneAndSubzone(true, false, true)
@@ -257,21 +281,7 @@ local function InitializePins()
         meaning the game will look for 1178 and ["craglorn/craglorn_base_0"] which is invalid
         ]]--
         --d(zone)
-
-        ScrySpy_SavedVars.location_info = ScrySpy_SavedVars.location_info or { }
-        ScrySpy_SavedVars.location_info[zone] = ScrySpy_SavedVars.location_info[zone] or { }
-
-        ScrySpy.dig_sites[zone] = ScrySpy.dig_sites[zone] or { }
-
-        local mapData = ScrySpy.dig_sites[zone] or { }
-        local dig_sites_sv_table = get_digsite_loc_sv(zone) or { }
-        if next(dig_sites_sv_table) then
-            for num_entry, digsite_loc in ipairs(dig_sites_sv_table) do
-                if save_to_sv(mapData, digsite_loc) then
-                    table.insert(mapData, digsite_loc)
-                end
-            end
-        end
+        local mapData = ScrySpy.get_pin_data(zone) or { }
         if mapData then
             for index, pinData in pairs(mapData) do
                 LMP:CreatePin(PIN_TYPE, pinData, pinData[loc_index.x_pos], pinData[loc_index.y_pos])
@@ -288,7 +298,7 @@ local function InitializePins()
     local lmp_pin_layout =
     {
         level = ScrySpy_SavedVars.pin_level,
-        texture = "/"..AddonName.."/img/spade-icon.dds", -- this should be savedVars too...
+        texture = compass_pin_texture,
         size = ScrySpy_SavedVars.pin_size,
     }
 
@@ -302,7 +312,7 @@ local function InitializePins()
             else
                 SetTooltipText(InformationTooltip, PIN_NAME)
             end
-        end,
+        end
     }
 
     LMP:AddPinType(PIN_TYPE, function() PinTypeAddCallback(PIN_TYPE) end, nil, lmp_pin_layout, pinTooltipCreator)
@@ -314,8 +324,34 @@ local function reset_info()
     ScrySpy_SavedVars.location_info = {}
 end
 
+local function compass_callback()
+	if GetMapType() <= MAPTYPE_ZONE then
+		local zone = LMP:GetZoneAndSubzone(true, false, true)
+		local mapData = ScrySpy.get_pin_data(zone) or { }
+		if mapData then
+			for _, pinData in ipairs(mapData) do
+                CCP.pinManager:CreatePin(custom_compass_pin, pinData, pinData[loc_index.x_pos], pinData[loc_index.y_pos])
+			end
+		end
+	end
+end
+
 local function OnPlayerActivated(eventCode)
+    local pinlayout_compass = {
+        maxDistance = ScrySpy.compass_max_distance,
+        texture = compass_pin_texture,
+        sizeCallback = function(pin, angle, normalizedAngle, normalizedDistance)
+            if zo_abs(normalizedAngle) > 0.25 then
+                pin:SetDimensions(54 - 24 * zo_abs(normalizedAngle), 54 - 24 * zo_abs(normalizedAngle))
+            else
+                pin:SetDimensions(48, 48)
+            end
+        end,
+    }
+
     InitializePins()
+    CCP:AddCustomPin(custom_compass_pin, compass_callback, pinlayout_compass)
+	CCP:RefreshPins(custom_compass_pin)
     EVENT_MANAGER:UnregisterForEvent(AddonName.."_InitPins", EVENT_PLAYER_ACTIVATED)
 end
 EVENT_MANAGER:RegisterForEvent(AddonName.."_InitPins", EVENT_PLAYER_ACTIVATED, OnPlayerActivated)
@@ -341,6 +377,15 @@ local function OnLoad(eventCode,addonName)
             ScrySpy.Hide3DPins()
         end
     end)
+
+    if ScrySpy_SavedVars.version ~= 2 then
+        ScrySpy_SavedVars = { }
+        ScrySpy_SavedVars.version = 2
+        ScrySpy_SavedVars.location_info = { }
+        ScrySpy_SavedVars.show_pins = true
+        ScrySpy_SavedVars.pin_level = 30
+        ScrySpy_SavedVars.pin_size = 25
+    end
 
 end
 EVENT_MANAGER:RegisterForEvent(AddonName,EVENT_ADD_ON_LOADED,OnLoad)
