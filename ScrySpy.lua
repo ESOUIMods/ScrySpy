@@ -1,49 +1,46 @@
-local AddonName="ScrySpy"
-
 local LMP = LibMapPins
 local GPS = LibGPS3
 local Lib3D = Lib3D
 local CCP = COMPASS_PINS
+local LAM = LibAddonMenu2
+
 
 ---------------------------------------
 ----- Lib3D Vars                  -----
 ---------------------------------------
 
-local dig_site_pin, frame, center
+
 
 ---------------------------------------
 ----- ScrySpy Vars                -----
 ---------------------------------------
 
-client_lang = GetCVar("language.2")
 ScrySpy_SavedVars = ScrySpy_SavedVars or { }
-ScrySpy_SavedVars.version = ScrySpy_SavedVars.version or 1
+ScrySpy_SavedVars.version = ScrySpy_SavedVars.version or 1 -- This is not the addon version number
 ScrySpy_SavedVars.location_info = ScrySpy_SavedVars.location_info or { }
-ScrySpy_SavedVars.show_pins = ScrySpy_SavedVars.show_pins or true
-ScrySpy_SavedVars.pin_level = ScrySpy_SavedVars.pin_level or 30
-ScrySpy_SavedVars.pin_size = ScrySpy_SavedVars.pin_size or 25
-
--- ScrySpy
-local scryspy_settings = {
-    pin_level=30,
-    pin_size=25,
-    show_pins=true,
-}
-
-ScrySpy.compass_max_distance = 0.05
+ScrySpy_SavedVars.pin_level = ScrySpy_SavedVars.pin_level or ScrySpy.scryspy_defaults.pin_level
+ScrySpy_SavedVars.pin_size = ScrySpy_SavedVars.pin_size or ScrySpy.scryspy_defaults.pin_size
+ScrySpy_SavedVars.digsite_pin_size = ScrySpy_SavedVars.digsite_pin_size or ScrySpy.scryspy_defaults.digsite_pin_size
+ScrySpy_SavedVars.pin_type = ScrySpy_SavedVars.pin_type or ScrySpy.scryspy_defaults.pin_type
+ScrySpy_SavedVars.digsite_pin_type = ScrySpy_SavedVars.digsite_pin_type or ScrySpy.scryspy_defaults.digsite_pin_type
+ScrySpy_SavedVars.compass_max_distance = ScrySpy_SavedVars.compass_max_distance or ScrySpy.scryspy_defaults.compass_max_distance
+ScrySpy_SavedVars.custom_compass_pin = ScrySpy_SavedVars.custom_compass_pin or ScrySpy.scryspy_defaults.filters[ScrySpy.custom_compass_pin]
+ScrySpy_SavedVars.scryspy_map_pin = ScrySpy_SavedVars.scryspy_map_pin or ScrySpy.scryspy_defaults.filters[ScrySpy.scryspy_map_pin]
+ScrySpy_SavedVars.dig_site_pin = ScrySpy_SavedVars.dig_site_pin or ScrySpy.scryspy_defaults.filters[ScrySpy.dig_site_pin]
+ScrySpy_SavedVars.digsite_spike_color = ScrySpy_SavedVars.digsite_spike_color or ScrySpy.scryspy_defaults.digsite_spike_color
 
 -- Existing Local
-local PIN_TYPE = "pinType_Digsite"
+local PIN_TYPE = "pinType_Digsite" -- This is changed by LAM now, use ScrySpy.scryspy_map_pin
 local PIN_FILTER_NAME = "ScrySpy"
 local PIN_NAME = "Dig Location"
-local custom_compass_pin = "compass_digsite"
-local compass_pin_texture = "/ScrySpy/img/spade-icon.dds"
+local PIN_PRIORITY_OFFSET = 1
 
+-- ScrySpy
 dig_site_names = {
-["en"] = "Dig Site",
-["fr"] = "Site De fouilles",
-["de"] = "Ausgrabungsstätte",
-["ru"] = "Место раскопок",
+    ["en"] = "Dig Site",
+    ["fr"] = "Site De fouilles",
+    ["de"] = "Ausgrabungsstätte",
+    ["ru"] = "Место раскопок",
 }
 
 loc_index = {
@@ -55,6 +52,16 @@ loc_index = {
     worldY = 6,
     worldZ = 7,
 }
+
+local function is_in(search_value, search_table)
+    for k, v in pairs(search_table) do
+        if search_value == v then return true end
+        if type(search_value) == "string" then
+            if string.find(string.lower(v), string.lower(search_value)) then return true end
+        end
+    end
+    return false
+end
 
 -- Function to check for empty table
 local function is_empty_or_nil(t)
@@ -156,31 +163,29 @@ local function save_dig_site_location()
     if save_to_sv(dig_sites_table, location) and save_to_sv(dig_sites_sv_table, location) then
         --d("saving location")
         table.insert(ScrySpy_SavedVars.location_info[zone], location)
-        LMP:RefreshPins(PIN_TYPE)
-        CCP:RefreshPins(custom_compass_pin)
+        LMP:RefreshPins(ScrySpy.scryspy_map_pin)
+        CCP:RefreshPins(ScrySpy.custom_compass_pin)
         ScrySpy.Draw3DPins()
     end
 end
 
-local function RefreshPinFilters()
-    LMP:SetEnabled(PIN_TYPE, ScrySpy_SavedVars.show_pins)
+function ScrySpy.RefreshPinLayout()
+    LMP:SetLayoutKey(ScrySpy.scryspy_map_pin, "size", ScrySpy_SavedVars.pin_size)
+    LMP:SetLayoutKey(ScrySpy.scryspy_map_pin, "level", ScrySpy_SavedVars.pin_level+PIN_PRIORITY_OFFSET)
+    LMP:SetLayoutKey(ScrySpy.scryspy_map_pin, "texture", ScrySpy.pin_textures[ScrySpy_SavedVars.pin_type])
+    LMP:RefreshPins(ScrySpy.scryspy_map_pin)
+end
+
+function ScrySpy.RefreshPinFilters()
+    LMP:SetEnabled(ScrySpy.scryspy_map_pin, ScrySpy_SavedVars.scryspy_map_pin)
 end
 
 ---------------------------------------
 ----- Lib3D                       -----
 ---------------------------------------
-local function is_in(search_value, search_table)
-    for k, v in pairs(search_table) do
-        if search_value == v then return true end
-        if type(search_value) == "string" then
-            if string.find(string.lower(v), string.lower(search_value)) then return true end
-        end
-    end
-    return false
-end
 
 function ScrySpy.Hide3DPins()
-    -- remove the on update handler and hide the mage dig_site_pin
+    -- remove the on update handler and hide the ScrySpy.dig_site_pin
     EVENT_MANAGER:UnregisterForUpdate("DigSite")
     ScrySpy_WorldPins:SetHidden(true)
     ScrySpy.worldControlPool:ReleaseAllObjects()
@@ -212,9 +217,11 @@ function ScrySpy.Draw3DPins()
                 end
                 local child_name = textureControl:GetName()
                 if is_in("icon", { child_name } ) then
+                    textureControl:SetTexture(ScrySpy.pin_textures[ScrySpy_SavedVars.digsite_pin_type])
                     textureControl:Set3DRenderSpaceOrigin(pinData[loc_index.worldX]/100, (pinData[loc_index.worldY]/100) + 2.5, pinData[loc_index.worldZ]/100)
                     textureControl:Set3DLocalDimensions(0.30 * size + 0.6, 0.30 * size + 0.6)
                 else
+                    textureControl:SetColor(unpack(ScrySpy_SavedVars.digsite_spike_color))
                     textureControl:Set3DRenderSpaceOrigin(pinData[loc_index.worldX]/100, (pinData[loc_index.worldY]/100) + 1.0, pinData[loc_index.worldZ]/100)
                     textureControl:Set3DLocalDimensions(0.25 * size + 0.75, 0.75 * size + 1.25)
                 end
@@ -245,11 +252,11 @@ local function OnInteract(event_code, client_interact_result, interact_target_na
     local text = zo_strformat(SI_CHAT_MESSAGE_FORMATTER, interact_target_name)
     --d(text)
     --d("OnInteract")
-    if text == dig_site_names[client_lang] then
+    if text == dig_site_names[ScrySpy.client_lang] then
         save_dig_site_location()
     end
 end
-EVENT_MANAGER:RegisterForEvent(AddonName,EVENT_CLIENT_INTERACT_RESULT, OnInteract)
+EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name,EVENT_CLIENT_INTERACT_RESULT, OnInteract)
 
 function ScrySpy.get_pin_data(zone)
     ScrySpy_SavedVars.location_info = ScrySpy_SavedVars.location_info or { }
@@ -284,7 +291,7 @@ local function InitializePins()
         local mapData = ScrySpy.get_pin_data(zone) or { }
         if mapData then
             for index, pinData in pairs(mapData) do
-                LMP:CreatePin(PIN_TYPE, pinData, pinData[loc_index.x_pos], pinData[loc_index.y_pos])
+                LMP:CreatePin(ScrySpy.scryspy_map_pin, pinData, pinData[loc_index.x_pos], pinData[loc_index.y_pos])
             end
         end
     end
@@ -298,48 +305,13 @@ local function InitializePins()
     local lmp_pin_layout =
     {
         level = ScrySpy_SavedVars.pin_level,
-        texture = compass_pin_texture,
+        texture = ScrySpy.pin_textures[ScrySpy_SavedVars.pin_type],
         size = ScrySpy_SavedVars.pin_size,
     }
 
-    local pinTooltipCreator = {
-        creator = function(pin)
-            if IsInGamepadPreferredMode() then
-                local InformationTooltip = ZO_MapLocationTooltip_Gamepad
-                local baseSection = InformationTooltip.tooltip
-                InformationTooltip:LayoutIconStringLine(baseSection, nil, AddonName, baseSection:GetStyle("mapLocationTooltipContentHeader"))
-                InformationTooltip:LayoutIconStringLine(baseSection, nil, PIN_NAME, baseSection:GetStyle("mapLocationTooltipContentName"))
-            else
-                SetTooltipText(InformationTooltip, PIN_NAME)
-            end
-        end
-    }
-
-    LMP:AddPinType(PIN_TYPE, function() PinTypeAddCallback(PIN_TYPE) end, nil, lmp_pin_layout, pinTooltipCreator)
-    LMP:AddPinFilter(PIN_TYPE, zo_iconFormat(lmp_pin_layout.texture,24,24).." "..PIN_FILTER_NAME, true, ScrySpy_SavedVars.show_pins)
-    RefreshPinFilters()
-end
-
-local function reset_info()
-    ScrySpy_SavedVars.location_info = {}
-end
-
-local function compass_callback()
-	if GetMapType() <= MAPTYPE_ZONE then
-		local zone = LMP:GetZoneAndSubzone(true, false, true)
-		local mapData = ScrySpy.get_pin_data(zone) or { }
-		if mapData then
-			for _, pinData in ipairs(mapData) do
-                CCP.pinManager:CreatePin(custom_compass_pin, pinData, pinData[loc_index.x_pos], pinData[loc_index.y_pos])
-			end
-		end
-	end
-end
-
-local function OnPlayerActivated(eventCode)
     local pinlayout_compass = {
-        maxDistance = ScrySpy.compass_max_distance,
-        texture = compass_pin_texture,
+        maxDistance = 0.05,
+        texture = ScrySpy.pin_textures[ScrySpy_SavedVars.custom_compass_pin],
         sizeCallback = function(pin, angle, normalizedAngle, normalizedDistance)
             if zo_abs(normalizedAngle) > 0.25 then
                 pin:SetDimensions(54 - 24 * zo_abs(normalizedAngle), 54 - 24 * zo_abs(normalizedAngle))
@@ -349,14 +321,54 @@ local function OnPlayerActivated(eventCode)
         end,
     }
 
-    InitializePins()
-    CCP:AddCustomPin(custom_compass_pin, compass_callback, pinlayout_compass)
-	CCP:RefreshPins(custom_compass_pin)
-    EVENT_MANAGER:UnregisterForEvent(AddonName.."_InitPins", EVENT_PLAYER_ACTIVATED)
-end
-EVENT_MANAGER:RegisterForEvent(AddonName.."_InitPins", EVENT_PLAYER_ACTIVATED, OnPlayerActivated)
+    local function compass_callback()
+        if GetMapType() <= MAPTYPE_ZONE and ScrySpy_SavedVars.custom_compass_pin then
+            local zone = LMP:GetZoneAndSubzone(true, false, true)
+            local mapData = ScrySpy.get_pin_data(zone) or { }
+            if mapData then
+                for _, pinData in ipairs(mapData) do
+                    CCP.pinManager:CreatePin(ScrySpy.custom_compass_pin, pinData, pinData[loc_index.x_pos], pinData[loc_index.y_pos])
+                end
+            end
+        end
+    end
 
-local function OnLoad(eventCode,addonName)
+    local pinTooltipCreator = {
+        creator = function(pin)
+            if IsInGamepadPreferredMode() then
+                local InformationTooltip = ZO_MapLocationTooltip_Gamepad
+                local baseSection = InformationTooltip.tooltip
+                InformationTooltip:LayoutIconStringLine(baseSection, nil, ScrySpy.addon_name, baseSection:GetStyle("mapLocationTooltipContentHeader"))
+                InformationTooltip:LayoutIconStringLine(baseSection, nil, PIN_NAME, baseSection:GetStyle("mapLocationTooltipContentName"))
+            else
+                SetTooltipText(InformationTooltip, PIN_NAME)
+            end
+        end
+    }
+
+    LMP:AddPinType(ScrySpy.scryspy_map_pin, function() PinTypeAddCallback(ScrySpy.scryspy_map_pin) end, nil, lmp_pin_layout, pinTooltipCreator)
+    LMP:AddPinFilter(ScrySpy.scryspy_map_pin, zo_iconFormat(lmp_pin_layout.texture,24,24).." "..PIN_FILTER_NAME, false, ScrySpy_SavedVars, "scryspy_map_pin")
+    ScrySpy.RefreshPinFilters()
+    CCP:AddCustomPin(ScrySpy.custom_compass_pin, compass_callback, pinlayout_compass)
+    CCP:RefreshPins(ScrySpy.custom_compass_pin)
+end
+
+local function reset_info()
+    ScrySpy_SavedVars.location_info = {}
+end
+
+local function OnPlayerActivated(eventCode)
+    InitializePins()
+    ScrySpy.RefreshPinLayout()
+    CCP.pinLayouts[ScrySpy.custom_compass_pin].texture = ScrySpy.pin_textures[ScrySpy_SavedVars.pin_type]
+    CCP:RefreshPins(ScrySpy.custom_compass_pin)
+    ScrySpy.digsite_spike_color:SetRGBA( ScrySpy_SavedVars.digsite_spike_color )
+    ScrySpy.Draw3DPins()
+    EVENT_MANAGER:UnregisterForEvent(ScrySpy.addon_name.."_InitPins", EVENT_PLAYER_ACTIVATED)
+end
+EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name.."_InitPins", EVENT_PLAYER_ACTIVATED, OnPlayerActivated)
+
+local function OnLoad(eventCode, addOnName)
     -- turn the top level control into a 3d control
     ScrySpy_WorldPins:Create3DRenderSpace()
 
@@ -367,7 +379,7 @@ local function OnLoad(eventCode,addonName)
     HUD_SCENE:AddFragment(fragment)
     LOOT_SCENE:AddFragment(fragment)
 
-    -- register a callback, so we know when to start/stop displaying the dig_site_pin
+    -- register a callback, so we know when to start/stop displaying the ScrySpy.dig_site_pin
     Lib3D:RegisterWorldChangeCallback("DigSite", function(identifier, zoneIndex, isValidZone, newZone)
         if not newZone then return end
 
@@ -378,14 +390,31 @@ local function OnLoad(eventCode,addonName)
         end
     end)
 
-    if ScrySpy_SavedVars.version ~= 2 then
+    if ScrySpy_SavedVars.version ~= 3 then
+        local temp_locations
+        if ScrySpy_SavedVars.version == nil then ScrySpy_SavedVars.version = 1 end
+        if ScrySpy_SavedVars.version >= 2 then
+            if ScrySpy_SavedVars.location_info then
+                temp_locations = ScrySpy_SavedVars.location_info
+            end
+        end
         ScrySpy_SavedVars = { }
-        ScrySpy_SavedVars.version = 2
-        ScrySpy_SavedVars.location_info = { }
-        ScrySpy_SavedVars.show_pins = true
-        ScrySpy_SavedVars.pin_level = 30
-        ScrySpy_SavedVars.pin_size = 25
+        ScrySpy_SavedVars.version = 3
+        ScrySpy_SavedVars.location_info = temp_locations or { }
+        ScrySpy_SavedVars.pin_level = ScrySpy_SavedVars.pin_level or ScrySpy.scryspy_defaults.pin_level
+        ScrySpy_SavedVars.pin_size = ScrySpy_SavedVars.pin_size or ScrySpy.scryspy_defaults.pin_size
+        ScrySpy_SavedVars.digsite_pin_size = ScrySpy_SavedVars.digsite_pin_size or ScrySpy.scryspy_defaults.digsite_pin_size
+        ScrySpy_SavedVars.pin_type = ScrySpy_SavedVars.pin_type or ScrySpy.scryspy_defaults.pin_type
+        ScrySpy_SavedVars.digsite_pin_type = ScrySpy_SavedVars.digsite_pin_type or ScrySpy.scryspy_defaults.digsite_pin_type
+        ScrySpy_SavedVars.compass_max_distance = ScrySpy_SavedVars.compass_max_distance or ScrySpy.scryspy_defaults.compass_max_distance
+        ScrySpy_SavedVars.custom_compass_pin = ScrySpy_SavedVars.custom_compass_pin or ScrySpy.scryspy_defaults.filters[ScrySpy.custom_compass_pin]
+        ScrySpy_SavedVars.scryspy_map_pin = ScrySpy_SavedVars.scryspy_map_pin or ScrySpy.scryspy_defaults.filters[ScrySpy.scryspy_map_pin]
+        ScrySpy_SavedVars.dig_site_pin = ScrySpy_SavedVars.dig_site_pin or ScrySpy.scryspy_defaults.filters[ScrySpy.dig_site_pin]
+        ScrySpy_SavedVars.digsite_spike_color = ScrySpy_SavedVars.digsite_spike_color or ScrySpy.scryspy_defaults.digsite_spike_color
+        ScrySpy.RefreshPinFilters()
+        ScrySpy.RefreshPinLayout()
+        LMP:RefreshPins(ScrySpy.scryspy_map_pin)
     end
 
 end
-EVENT_MANAGER:RegisterForEvent(AddonName,EVENT_ADD_ON_LOADED,OnLoad)
+EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name, EVENT_ADD_ON_LOADED, OnLoad)
