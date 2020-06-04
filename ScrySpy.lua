@@ -209,24 +209,25 @@ function ScrySpy.Draw3DPins()
             if not pinControl:Has3DRenderSpace() then
                 pinControl:Create3DRenderSpace()
             end
+
             local size = 1
-            for i = 1, pinControl:GetNumChildren() do
-                local textureControl = pinControl:GetChild(i)
-                if not textureControl:Has3DRenderSpace() then
-                    textureControl:Create3DRenderSpace()
-                end
-                local child_name = textureControl:GetName()
-                if is_in("icon", { child_name } ) then
-                    textureControl:SetTexture(ScrySpy.pin_textures[ScrySpy_SavedVars.digsite_pin_type])
-                    textureControl:Set3DRenderSpaceOrigin(pinData[loc_index.worldX]/100, (pinData[loc_index.worldY]/100) + 2.5, pinData[loc_index.worldZ]/100)
-                    textureControl:Set3DLocalDimensions(0.30 * size + 0.6, 0.30 * size + 0.6)
-                else
-                    textureControl:SetColor(unpack(ScrySpy_SavedVars.digsite_spike_color))
-                    textureControl:Set3DRenderSpaceOrigin(pinData[loc_index.worldX]/100, (pinData[loc_index.worldY]/100) + 1.0, pinData[loc_index.worldZ]/100)
-                    textureControl:Set3DLocalDimensions(0.25 * size + 0.75, 0.75 * size + 1.25)
-                end
-                textureControl:Set3DRenderSpaceUsesDepthBuffer(true)
+            local iconControl = pinControl:GetNamedChild("Icon")
+            if not iconControl:Has3DRenderSpace() then
+                iconControl:Create3DRenderSpace()
+                iconControl:Set3DRenderSpaceUsesDepthBuffer(true)
             end
+            iconControl:SetTexture(ScrySpy.pin_textures[ScrySpy_SavedVars.digsite_pin_type])
+            iconControl:Set3DRenderSpaceOrigin(pinData[loc_index.worldX]/100, (pinData[loc_index.worldY]/100) + 2.5, pinData[loc_index.worldZ]/100)
+            iconControl:Set3DLocalDimensions(0.30 * size + 0.6, 0.30 * size + 0.6)
+
+            local spikeControl = pinControl:GetNamedChild("Spike")
+            if not spikeControl:Has3DRenderSpace() then
+                spikeControl:Create3DRenderSpace()
+                spikeControl:Set3DRenderSpaceUsesDepthBuffer(true)
+            end
+            spikeControl:SetColor(unpack(ScrySpy_SavedVars.digsite_spike_color))
+            spikeControl:Set3DRenderSpaceOrigin(pinData[loc_index.worldX]/100, (pinData[loc_index.worldY]/100) + 1.0, pinData[loc_index.worldZ]/100)
+            spikeControl:Set3DLocalDimensions(0.25 * size + 0.75, 0.75 * size + 1.25)
         end
 
         local activeObjects = ScrySpy.worldControlPool:GetActiveObjects()
