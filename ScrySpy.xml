@@ -4,7 +4,7 @@
         <Control name="ScrySpy_WorldPin" virtual="true">
             <Dimensions x="64" y="192" />
             <Controls>
-                <Texture name="$(parent)Icon" textureFile="ScrySpy/img/spade-icon.dds">
+                <Texture name="$(parent)Icon" textureFile="ScrySpy/img/spade_shovel_redx_marker.dds">
                     <Dimensions y="64" />
                 </Texture>
                 <Texture name="$(parent)Spike" textureFile="ScrySpy/img/worldMarker.dds">
