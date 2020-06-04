@@ -15,3 +15,7 @@ local strings = {
     spike_pincolor                      = "Цвет нижней части 3D значка",
     spike_pincolor_desc                 = "Цвет нижней части 3D значка места раскопок.",
 }
+
+for stringId, stringValue in pairs(strings) do
+	SafeAddString(_G[stringId], stringValue, 0)
+end

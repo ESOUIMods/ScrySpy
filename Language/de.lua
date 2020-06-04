@@ -15,3 +15,7 @@ local strings = {
     spike_pincolor                      = "Farbe unterer 3D pin Bereich",
     spike_pincolor_desc                 = "Die Farbe für den unteren Bereich der 3D Pins.",
 }
+
+for stringId, stringValue in pairs(strings) do
+	SafeAddString(_G[stringId], stringValue, 0)
+end
