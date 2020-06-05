@@ -13,7 +13,7 @@ scryspy_defaults = {
 ScrySpy_SavedVars.show_pins
 ]]--
 ScrySpy.addon_name = "ScrySpy"
-ScrySpy.addon_version = "1.12"
+ScrySpy.addon_version = "1.13"
 ScrySpy.addon_website = "https://www.esoui.com/downloads/info2647-ScrySpy.html"
 ScrySpy.custom_compass_pin = "compass_digsite" -- custom compas pin pin type
 ScrySpy.scryspy_map_pin = "scryspy_map_pin"
@@ -24,6 +24,32 @@ ScrySpy.pin_textures = {
     [1] = "ScrySpy/img/spade_shovel_redx_marker.dds",
     [2] = "ScrySpy/img/spade_shovel_marker.dds",
 }
+
+function ScrySpy.unpack_color_table(the_table)
+    local col_r, col_g, col_b, col_a = unpack(the_table)
+    return col_r, col_g, col_b, col_a
+end
+
+function ScrySpy.create_color_table(r, g, b, a)
+    local c = {}
+
+    if(type(r) == "string") then
+        c[4], c[1], c[2], c[3] = ConvertHTMLColorToFloatValues(r)
+    elseif(type(r) == "table") then
+        local otherColorDef = r
+        c[1] = otherColorDef.r or 1
+        c[2] = otherColorDef.g or 1
+        c[3] = otherColorDef.b or 1
+        c[4] = otherColorDef.a or 1
+    else
+        c[1] = r or 1
+        c[2] = g or 1
+        c[3] = b or 1
+        c[4] = a or 1
+    end
+
+    return c
+end
 
 ScrySpy.scryspy_defaults = {
     ["pin_level"] = 30,
@@ -44,5 +70,3 @@ ScrySpy.scryspy_defaults = {
         [4] = 1,
     },
 }
-
-ScrySpy.digsite_spike_color = ZO_ColorDef:New(ScrySpy.scryspy_defaults.digsite_spike_color)

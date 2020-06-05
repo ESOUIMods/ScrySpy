@@ -46,8 +46,7 @@ local optionsTable = {
         setFunc = function(selected)
                 for index, name in ipairs(pin_textures_list) do
                     if name == selected then
-                        ScrySpy.scryspy_defaults.pin_type = index
-                        ScrySpy_SavedVars.pin_type = ScrySpy.scryspy_defaults.pin_type
+                        ScrySpy_SavedVars.pin_type = index
                         LMP:SetLayoutKey(ScrySpy.scryspy_map_pin, "texture", ScrySpy.pin_textures[index])
                         shovel_icon:SetTexture(ScrySpy.pin_textures[index])
                         ScrySpy.RefreshPinLayout()
@@ -70,8 +69,7 @@ local optionsTable = {
         setFunc = function(selected)
                 for index, name in ipairs(pin_textures_list) do
                     if name == selected then
-                        ScrySpy.scryspy_defaults.digsite_pin_type = index
-                        ScrySpy_SavedVars.digsite_pin_type = ScrySpy.scryspy_defaults.digsite_pin_type
+                        ScrySpy_SavedVars.digsite_pin_type = index
                         digsite_icon:SetTexture(ScrySpy.pin_textures[index])
                         ScrySpy.Draw3DPins() -- this makes the pins appear when the are normally hidden
                         break
@@ -90,8 +88,7 @@ local optionsTable = {
         max = 70,
         getFunc = function() return ScrySpy_SavedVars.pin_size end,
         setFunc = function(size)
-                ScrySpy.scryspy_defaults.pin_size = size
-                ScrySpy_SavedVars.pin_size = ScrySpy.scryspy_defaults.pin_size
+                ScrySpy_SavedVars.pin_size = size
                 shovel_icon:SetDimensions(size, size)
                 LMP:SetLayoutKey(ScrySpy.scryspy_map_pin, "size", size)
                 ScrySpy.RefreshPinLayout()
@@ -109,8 +106,7 @@ local optionsTable = {
         step = 5,
         getFunc = function() return ScrySpy_SavedVars.pin_level end,
         setFunc = function(level)
-                ScrySpy.scryspy_defaults.pin_level = level
-                ScrySpy_SavedVars.pin_level = ScrySpy.scryspy_defaults.pin_level
+                ScrySpy_SavedVars.pin_level = level
                 LMP:SetLayoutKey(ScrySpy.scryspy_map_pin, "level", level)
                 ScrySpy.RefreshPinLayout()
             end,
@@ -124,8 +120,7 @@ local optionsTable = {
         tooltip = GetString(show_digsites_on_compas_desc),
         getFunc = function() return ScrySpy_SavedVars.custom_compass_pin end,
         setFunc = function(state)
-                ScrySpy.scryspy_defaults.filters[ScrySpy.custom_compass_pin] = state
-                ScrySpy_SavedVars.custom_compass_pin = ScrySpy.scryspy_defaults.filters[ScrySpy.custom_compass_pin]
+                ScrySpy_SavedVars.custom_compass_pin = state
                 CCP:RefreshPins(ScrySpy.custom_compass_pin)
             end,
         default = ScrySpy.scryspy_defaults.filters[ScrySpy.custom_compass_pin],
@@ -139,8 +134,7 @@ local optionsTable = {
         max = 100,
         getFunc = function() return ScrySpy_SavedVars.compass_max_distance * 1000 end,
         setFunc = function(maxDistance)
-                ScrySpy.scryspy_defaults.compass_max_distance = maxDistance / 1000
-                ScrySpy_SavedVars.compass_max_distance = ScrySpy.scryspy_defaults.compass_max_distance
+                ScrySpy_SavedVars.compass_max_distance = maxDistance / 1000
                 CCP.pinLayouts[ScrySpy.custom_compass_pin].maxDistance = maxDistance / 1000
                 CCP:RefreshPins(ScrySpy.custom_compass_pin)
             end,
@@ -154,10 +148,8 @@ local optionsTable = {
         name = GetString(spike_pincolor),
         tooltip = GetString(spike_pincolor_desc),
         getFunc = function() return unpack(ScrySpy_SavedVars.digsite_spike_color) end,
-        setFunc = function(...)
-            ScrySpy.digsite_spike_color:SetRGBA(...)
-            ScrySpy.scryspy_defaults.digsite_spike_color = { ScrySpy.digsite_spike_color:UnpackRGBA() }
-            ScrySpy_SavedVars.digsite_spike_color = ScrySpy.scryspy_defaults.digsite_spike_color
+        setFunc = function(r,g,b,a)
+            ScrySpy_SavedVars.digsite_spike_color = ScrySpy.create_color_table(r, g, b, a)
             ScrySpy.Draw3DPins()
         end,
         default = ScrySpy.scryspy_defaults.digsite_spike_color,
