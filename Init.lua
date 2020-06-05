@@ -34,18 +34,18 @@ function ScrySpy.create_color_table(r, g, b, a)
     local c = {}
 
     if(type(r) == "string") then
-        c[4], c[1], c[2], c[3] = ConvertHTMLColorToFloatValues(r)
+        c.a, c.r, c.g, c.b = ConvertHTMLColorToFloatValues(r)
     elseif(type(r) == "table") then
         local otherColorDef = r
-        c[1] = otherColorDef.r or 1
-        c[2] = otherColorDef.g or 1
-        c[3] = otherColorDef.b or 1
-        c[4] = otherColorDef.a or 1
+        c.r = otherColorDef.r or 1
+        c.g = otherColorDef.g or 1
+        c.b = otherColorDef.b or 1
+        c.a = otherColorDef.a or 1
     else
-        c[1] = r or 1
-        c[2] = g or 1
-        c[3] = b or 1
-        c[4] = a or 1
+        c.r = r or 1
+        c.g = g or 1
+        c.b = b or 1
+        c.a = a or 1
     end
 
     return c
@@ -64,9 +64,9 @@ ScrySpy.scryspy_defaults = {
 		[ScrySpy.dig_site_pin] = true, -- toggle show 3d pin in overland
 	},
     ["digsite_spike_color"] = {
-        [1] = 1,
-        [2] = 1,
-        [3] = 1,
-        [4] = 1,
+        ["r"] = 1,
+        ["g"] = 1,
+        ["b"] = 1,
+        ["a"] = 1,
     },
 }
