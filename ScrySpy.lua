@@ -225,7 +225,7 @@ function ScrySpy.Draw3DPins()
                 spikeControl:Create3DRenderSpace()
                 spikeControl:Set3DRenderSpaceUsesDepthBuffer(true)
             end
-            spikeControl:SetColor(unpack(ScrySpy_SavedVars.digsite_spike_color))
+            spikeControl:SetColor(ScrySpy.unpack_color_table(ScrySpy_SavedVars.digsite_spike_color))
             spikeControl:Set3DRenderSpaceOrigin(pinData[loc_index.worldX]/100, (pinData[loc_index.worldY]/100) + 1.0, pinData[loc_index.worldZ]/100)
             spikeControl:Set3DLocalDimensions(0.25 * size + 0.75, 0.75 * size + 1.25)
         end
@@ -363,7 +363,6 @@ local function OnPlayerActivated(eventCode)
     ScrySpy.RefreshPinLayout()
     CCP.pinLayouts[ScrySpy.custom_compass_pin].texture = ScrySpy.pin_textures[ScrySpy_SavedVars.pin_type]
     CCP:RefreshPins(ScrySpy.custom_compass_pin)
-    ScrySpy.digsite_spike_color:SetRGBA( ScrySpy_SavedVars.digsite_spike_color )
     ScrySpy.Draw3DPins()
     EVENT_MANAGER:UnregisterForEvent(ScrySpy.addon_name.."_InitPins", EVENT_PLAYER_ACTIVATED)
 end
@@ -391,7 +390,7 @@ local function OnLoad(eventCode, addOnName)
         end
     end)
 
-    if ScrySpy_SavedVars.version ~= 3 then
+    if ScrySpy_SavedVars.version ~= 4 then
         local temp_locations
         if ScrySpy_SavedVars.version == nil then ScrySpy_SavedVars.version = 1 end
         if ScrySpy_SavedVars.version >= 2 then
@@ -400,7 +399,7 @@ local function OnLoad(eventCode, addOnName)
             end
         end
         ScrySpy_SavedVars = { }
-        ScrySpy_SavedVars.version = 3
+        ScrySpy_SavedVars.version = 4
         ScrySpy_SavedVars.location_info = temp_locations or { }
         ScrySpy_SavedVars.pin_level = ScrySpy_SavedVars.pin_level or ScrySpy.scryspy_defaults.pin_level
         ScrySpy_SavedVars.pin_size = ScrySpy_SavedVars.pin_size or ScrySpy.scryspy_defaults.pin_size
@@ -411,7 +410,11 @@ local function OnLoad(eventCode, addOnName)
         ScrySpy_SavedVars.custom_compass_pin = ScrySpy_SavedVars.custom_compass_pin or ScrySpy.scryspy_defaults.filters[ScrySpy.custom_compass_pin]
         ScrySpy_SavedVars.scryspy_map_pin = ScrySpy_SavedVars.scryspy_map_pin or ScrySpy.scryspy_defaults.filters[ScrySpy.scryspy_map_pin]
         ScrySpy_SavedVars.dig_site_pin = ScrySpy_SavedVars.dig_site_pin or ScrySpy.scryspy_defaults.filters[ScrySpy.dig_site_pin]
-        ScrySpy_SavedVars.digsite_spike_color = ScrySpy_SavedVars.digsite_spike_color or ScrySpy.scryspy_defaults.digsite_spike_color
+        if ScrySpy_SavedVars.version >= 4 then
+            ScrySpy_SavedVars.digsite_spike_color = ScrySpy_SavedVars.digsite_spike_color or ScrySpy.scryspy_defaults.digsite_spike_color
+        else
+            ScrySpy_SavedVars.digsite_spike_color = ScrySpy.scryspy_defaults.digsite_spike_color
+        end
         ScrySpy.RefreshPinFilters()
         ScrySpy.RefreshPinLayout()
         LMP:RefreshPins(ScrySpy.scryspy_map_pin)
