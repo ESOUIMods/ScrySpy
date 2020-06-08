@@ -13,7 +13,7 @@ scryspy_defaults = {
 ScrySpy_SavedVars.show_pins
 ]]--
 ScrySpy.addon_name = "ScrySpy"
-ScrySpy.addon_version = "1.13"
+ScrySpy.addon_version = "1.14"
 ScrySpy.addon_website = "https://www.esoui.com/downloads/info2647-ScrySpy.html"
 ScrySpy.custom_compass_pin = "compass_digsite" -- custom compas pin pin type
 ScrySpy.scryspy_map_pin = "scryspy_map_pin"
@@ -23,6 +23,13 @@ ScrySpy.client_lang = GetCVar("language.2")
 ScrySpy.pin_textures = {
     [1] = "ScrySpy/img/spade_shovel_redx_marker.dds",
     [2] = "ScrySpy/img/spade_shovel_marker.dds",
+    [3] = "esoui/art/antiquities/digsite_unknown.dds",
+    [4] = "esoui/art/antiquities/digging_crystal_full.dds",
+    [5] = "esoui/art/antiquities/digging_crystal_empty.dds",
+    [6] = "esoui/art/antiquities/digging_crystal_border.dds",
+    [7] = "esoui/art/antiquities/keyboard/trackedantiquityicon.dds",
+    [8] = "esoui/art/inventory/inventory_icon_visible.dds",
+    [9] = "esoui/art/inventory/inventory_quest_tabicon_active.dds",
 }
 
 function ScrySpy.unpack_color_table(the_table)

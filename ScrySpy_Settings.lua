@@ -5,6 +5,13 @@ local LAM = LibAddonMenu2
 local pin_textures_list = {
     [1] = "Pickaxe-Shovel Red-X (Default)",
     [2] = "Pickaxe-Shovel",
+    [3] = "Question Mark",
+    [4] = "Glowing Crystal",
+    [5] = "Crystal",
+    [6] = "Facet",
+    [7] = "Tracking Icon",
+    [8] = "Eye",
+    [9] = "Holy Grail",
 }
 
 local panelData = {
@@ -50,13 +57,13 @@ local optionsTable = {
                         LMP:SetLayoutKey(ScrySpy.scryspy_map_pin, "texture", ScrySpy.pin_textures[index])
                         shovel_icon:SetTexture(ScrySpy.pin_textures[index])
                         ScrySpy.RefreshPinLayout()
+                        LMP:RefreshPins(ScrySpy.scryspy_map_pin)
                         CCP.pinLayouts[ScrySpy.custom_compass_pin].texture = ScrySpy.pin_textures[index]
                         CCP:RefreshPins(ScrySpy.custom_compass_pin)
                         break
                     end
                 end
             end,
-        disabled = function() return not ScrySpy_SavedVars.scryspy_map_pin end,
         default = pin_textures_list[ScrySpy.scryspy_defaults.pin_type],
     },
     -- 3D Digsite Icon Texture
@@ -76,7 +83,6 @@ local optionsTable = {
                     end
                 end
             end,
-        disabled = function() return not ScrySpy.scryspy_defaults.filters[ScrySpy.dig_site_pin] end,
         default = pin_textures_list[ScrySpy.scryspy_defaults.digsite_pin_type],
     },
     -- Set Map Pin pin size
@@ -92,8 +98,8 @@ local optionsTable = {
                 shovel_icon:SetDimensions(size, size)
                 LMP:SetLayoutKey(ScrySpy.scryspy_map_pin, "size", size)
                 ScrySpy.RefreshPinLayout()
+                LMP:RefreshPins(ScrySpy.scryspy_map_pin)
             end,
-        disabled = function() return not ScrySpy_SavedVars.scryspy_map_pin end,
         default = ScrySpy.scryspy_defaults.pin_size,
     },
     -- Set Map Pin pin level meaning what takes precedence over other pins
@@ -109,21 +115,9 @@ local optionsTable = {
                 ScrySpy_SavedVars.pin_level = level
                 LMP:SetLayoutKey(ScrySpy.scryspy_map_pin, "level", level)
                 ScrySpy.RefreshPinLayout()
+                LMP:RefreshPins(ScrySpy.scryspy_map_pin)
             end,
-        disabled = function() return not ScrySpy_SavedVars.scryspy_map_pin end,
         default = ScrySpy.scryspy_defaults.pin_level,
-    },
-    -- Toggle showing digsites on compass
-    {
-        type = "checkbox",
-        name = GetString(show_digsites_on_compas),
-        tooltip = GetString(show_digsites_on_compas_desc),
-        getFunc = function() return ScrySpy_SavedVars.custom_compass_pin end,
-        setFunc = function(state)
-                ScrySpy_SavedVars.custom_compass_pin = state
-                CCP:RefreshPins(ScrySpy.custom_compass_pin)
-            end,
-        default = ScrySpy.scryspy_defaults.filters[ScrySpy.custom_compass_pin],
     },
     -- Set the max distance for compas pins to show up
     {
@@ -139,7 +133,6 @@ local optionsTable = {
                 CCP:RefreshPins(ScrySpy.custom_compass_pin)
             end,
         width = "full",
-        disabled = function() return not ScrySpy_SavedVars.custom_compass_pin end,
         default = ScrySpy.scryspy_defaults.compass_max_distance * 1000,
     },
     -- Set color for the 3D Map Pin Spike
