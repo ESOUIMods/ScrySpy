@@ -282,7 +282,7 @@ function ScrySpy.get_pin_data(zone)
     local function digsite_in_range(location)
         for _, compas_pin_loc in pairs(ScrySpy.antiquity_dig_sites) do
             local distance = zo_round(GPS:GetLocalDistanceInMeters(compas_pin_loc.x, compas_pin_loc.y, location[loc_index.x_pos], location[loc_index.y_pos]))
-            if distance <= 500 then
+            if distance <= 370 then
                 return true
             end
         end
@@ -319,6 +319,7 @@ function ScrySpy.get_pin_data(zone)
             table.insert(mod_digsite_pool, digsite_loc)
         end
     end
+
     --mod_digsite_pool = ScrySpy.combine_data(zone)
     return mod_digsite_pool
 end
@@ -396,7 +397,6 @@ local function InitializePins()
     }
 
     LMP:AddPinType(ScrySpy.scryspy_map_pin, function() PinTypeAddCallback(ScrySpy.scryspy_map_pin) end, nil, lmp_pin_layout, pinTooltipCreator)
-    LMP:AddPinFilter(ScrySpy.scryspy_map_pin, zo_iconFormat(lmp_pin_layout.texture,24,24).." "..PIN_FILTER_NAME, false, ScrySpy_SavedVars, "scryspy_map_pin")
     ScrySpy.RefreshPinFilters()
     CCP:AddCustomPin(ScrySpy.custom_compass_pin, compass_callback, pinlayout_compass)
     CCP:RefreshPins(ScrySpy.custom_compass_pin)
@@ -404,8 +404,12 @@ end
 
 local function build_zone_data()
     local zone = LMP:GetZoneAndSubzone(true, false, true)
+    if ScrySpy_SavedVars.data_store == nil then ScrySpy_SavedVars.data_store = {} end
+    ScrySpy_SavedVars.data_store[zone] = ScrySpy.combine_data(zone)
+end
+
+local function reset_zone_data()
     ScrySpy_SavedVars.data_store = {}
-    ScrySpy_SavedVars.data_store = ScrySpy.combine_data(zone)
 end
 
 local function OnPlayerActivated(eventCode)
@@ -413,7 +417,7 @@ local function OnPlayerActivated(eventCode)
     ScrySpy.RefreshPinLayout()
     CCP.pinLayouts[ScrySpy.custom_compass_pin].texture = ScrySpy.pin_textures[ScrySpy_SavedVars.pin_type]
     CCP:RefreshPins(ScrySpy.custom_compass_pin)
-    ScrySpy.update_active_dig_sites()
+    ScrySpy.update_antiquity_dig_sites()
     ScrySpy.Draw3DPins()
     EVENT_MANAGER:UnregisterForEvent(ScrySpy.addon_name.."_InitPins", EVENT_PLAYER_ACTIVATED)
 end
@@ -531,8 +535,14 @@ local function OnLoad(eventCode, addOnName)
         ScrySpy.RefreshPinLayout()
         LMP:RefreshPins(ScrySpy.scryspy_map_pin)
     end
+    ScrySpy.update_antiquity_dig_sites()
+
+    --SLASH_COMMANDS["/ssreset"] = function() reset_zone_data() end
 
     --SLASH_COMMANDS["/ssbuild"] = function() build_zone_data() end
+
+    SLASH_COMMANDS["/ssrefresh"] = function() ScrySpy.update_antiquity_dig_sites() end
+
 
 end
 EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name, EVENT_ADD_ON_LOADED, OnLoad)
