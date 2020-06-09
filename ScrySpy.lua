@@ -280,9 +280,9 @@ end
 
 function ScrySpy.get_pin_data(zone)
     local function digsite_in_range(location)
-        for _, compas_pin_loc in pairs(ScrySpy.antiquity_dig_sites) do
+        for key, compas_pin_loc in pairs(ScrySpy.antiquity_dig_sites) do
             local distance = zo_round(GPS:GetLocalDistanceInMeters(compas_pin_loc.x, compas_pin_loc.y, location[loc_index.x_pos], location[loc_index.y_pos]))
-            if distance <= 370 then
+            if distance <= ScrySpy.antiquity_dig_sites[key].size then
                 return true
             end
         end
@@ -449,6 +449,7 @@ function ScrySpy.update_active_dig_sites()
     end
 end
 
+-- MAP_PIN_TYPE_TRACKED_ANTIQUITY_DIG_SITE = 42
 function ScrySpy.update_antiquity_dig_sites()
     local map_pin_keys = LMP.pinManager.m_keyToPinMapping["antiquityDigSite"]
     local polygon_information = LMP.pinManager["m_Active"]
@@ -460,7 +461,10 @@ function ScrySpy.update_antiquity_dig_sites()
             local temp_compas_pin_location = {}
             temp_compas_pin_location.x = polygon_information[pin_information]["normalizedX"]
             temp_compas_pin_location.y = polygon_information[pin_information]["normalizedY"]
-            table.insert(ScrySpy.antiquity_dig_sites, temp_compas_pin_location)
+            blob_key = polygon_information[pin_information]["polygonBlobKey"]
+            local my_control = WINDOW_MANAGER:GetControlByName("ZO_PinPolygonBlob", blob_key)
+            temp_compas_pin_location.size = zo_round(math.max(my_control:GetDimensions())) + 50
+            ScrySpy.antiquity_dig_sites[blob_key] = temp_compas_pin_location
         end
     end
     ScrySpy.update_active_dig_sites()
