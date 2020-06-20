@@ -462,16 +462,18 @@ function ScrySpy.update_antiquity_dig_sites()
             temp_compas_pin_location.x = polygon_information[pin_information]["normalizedX"]
             temp_compas_pin_location.y = polygon_information[pin_information]["normalizedY"]
             blob_key = polygon_information[pin_information]["polygonBlobKey"]
-            -- set to 200 by default, then update as long as the control exists
-            temp_compas_pin_location.size = 200
-            local my_control = WINDOW_MANAGER:GetControlByName("ZO_PinPolygonBlob", blob_key)
-            if my_control then
-                local get_dimensions = my_control:GetDimensions()
-                if get_dimensions ~= nil then
-                    temp_compas_pin_location.size = zo_round(math.max(get_dimensions)) + 50
+            if blob_key then
+                -- set to 200 by default, then update as long as the control exists
+                temp_compas_pin_location.size = 200
+                local my_control = WINDOW_MANAGER:GetControlByName("ZO_PinPolygonBlob", blob_key)
+                if my_control then
+                    local get_dimensions = my_control:GetDimensions()
+                    if get_dimensions ~= nil then
+                        temp_compas_pin_location.size = zo_round(math.max(get_dimensions)) + 50
+                    end
                 end
+                ScrySpy.antiquity_dig_sites[blob_key] = temp_compas_pin_location
             end
-            ScrySpy.antiquity_dig_sites[blob_key] = temp_compas_pin_location
         end
     end
     ScrySpy.update_active_dig_sites()
