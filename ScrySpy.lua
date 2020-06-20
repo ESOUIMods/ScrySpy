@@ -539,6 +539,12 @@ local function OnLoad(eventCode, addOnName)
         ScrySpy.RefreshPinLayout()
         LMP:RefreshPins(ScrySpy.scryspy_map_pin)
     end
+
+    if ScrySpy_SavedVars["location_info"]["eyevea_base_0"] then
+        ScrySpy_SavedVars["location_info"]["guildmaps/eyevea_base_0"] = ScrySpy_SavedVars["location_info"]["eyevea_base_0"]
+        ScrySpy_SavedVars["location_info"]["eyevea_base_0"] = nil
+    end
+
     ScrySpy.update_antiquity_dig_sites()
 
     --SLASH_COMMANDS["/ssreset"] = function() reset_zone_data() end
