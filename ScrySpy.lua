@@ -4,12 +4,67 @@ local Lib3D = Lib3D
 local CCP = COMPASS_PINS
 local LAM = LibAddonMenu2
 
-
 ---------------------------------------
------ Lib3D Vars                  -----
+----- Degub Logging               -----
 ---------------------------------------
 
+if LibDebugLogger then
+    local logger = LibDebugLogger.Create(ScrySpy.addon_name)
+    ScrySpy.logger = logger
+end
+ScrySpy.show_log = false
+local SDLV = DebugLogViewer
 
+local function create_log(log_type, log_content)
+    if ScrySpy.show_log and ScrySpy.logger and SDLV then
+        if log_type == "Debug" then
+            ScrySpy.logger:Debug(log_content)
+        end
+        if log_type == "Verbose" then
+            ScrySpy.logger:Verbose(log_content)
+        end
+    elseif ScrySpy.show_log and not SDLV then
+        d(log_content)
+    end
+end
+
+local function emit_message(log_type, text)
+    if(text == "") then
+        text = "[Empty String]"
+    end
+    create_log(log_type, text)
+end
+
+local function emit_table(log_type, t, indent, table_history)
+    indent          = indent or "."
+    table_history    = table_history or {}
+
+    for k, v in pairs(t) do
+        local vType = type(v)
+
+        emit_message(log_type, indent.."("..vType.."): "..tostring(k).." = "..tostring(v))
+
+        if(vType == "table") then
+            if(table_history[v]) then
+                emit_message(log_type, indent.."Avoiding cycle on table...")
+            else
+                table_history[v] = true
+                emit_table(log_type, v, indent.."  ", table_history)
+            end
+        end
+    end
+end
+
+function ScrySpy.dm(log_type, ...)
+    for i = 1, select("#", ...) do
+        local value = select(i, ...)
+        if(type(value) == "table") then
+            emit_table(log_type, value)
+        else
+            emit_message(log_type, tostring(value))
+        end
+    end
+end
 
 ---------------------------------------
 ----- ScrySpy Vars                -----
@@ -163,25 +218,21 @@ local function save_dig_site_location()
         [loc_index.worldZ] = worldZ,
     }
     if save_to_sv(dig_sites_table, location) and save_to_sv(dig_sites_sv_table, location) then
-        --d("saving location")
+        ScrySpy.dm("Debug", "Saving Location")
         table.insert(ScrySpy_SavedVars.location_info[zone], location)
         LMP:RefreshPins(ScrySpy.scryspy_map_pin)
         CCP:RefreshPins(ScrySpy.custom_compass_pin)
         ScrySpy.Draw3DPins()
+    else
+        ScrySpy.dm("Debug", "No need to save location")
     end
-end
-
-function ScrySpy.RefreshPinFilters()
-    LMP:SetEnabled(ScrySpy.scryspy_map_pin, ScrySpy_SavedVars.scryspy_map_pin)
 end
 
 function ScrySpy.RefreshPinLayout()
     LMP:SetLayoutKey(ScrySpy.scryspy_map_pin, "size", ScrySpy_SavedVars.pin_size)
     LMP:SetLayoutKey(ScrySpy.scryspy_map_pin, "level", ScrySpy_SavedVars.pin_level+PIN_PRIORITY_OFFSET)
     LMP:SetLayoutKey(ScrySpy.scryspy_map_pin, "texture", ScrySpy.pin_textures[ScrySpy_SavedVars.pin_type])
-    LMP:RefreshPins(ScrySpy.scryspy_map_pin)
 end
-
 
 ---------------------------------------
 ----- Lib3D                       -----
@@ -251,7 +302,7 @@ function ScrySpy.Draw3DPins()
 end
 
 local function OnInteract(event_code, client_interact_result, interact_target_name)
-    --d(event_code)
+    ScrySpy.dm("Debug", "OnInteract Occured")
     --d(client_interact_result)
     local text = zo_strformat(SI_CHAT_MESSAGE_FORMATTER, interact_target_name)
     --d(text)
@@ -397,7 +448,8 @@ local function InitializePins()
     }
 
     LMP:AddPinType(ScrySpy.scryspy_map_pin, function() PinTypeAddCallback(ScrySpy.scryspy_map_pin) end, nil, lmp_pin_layout, pinTooltipCreator)
-    ScrySpy.RefreshPinFilters()
+    ScrySpy.RefreshPinLayout()
+    LMP:RefreshPins(ScrySpy.scryspy_map_pin)
     CCP:AddCustomPin(ScrySpy.custom_compass_pin, compass_callback, pinlayout_compass)
     CCP:RefreshPins(ScrySpy.custom_compass_pin)
 end
@@ -413,7 +465,6 @@ local function reset_zone_data()
 end
 
 local function OnPlayerActivated(eventCode)
-    InitializePins()
     ScrySpy.RefreshPinLayout()
     CCP.pinLayouts[ScrySpy.custom_compass_pin].texture = ScrySpy.pin_textures[ScrySpy_SavedVars.pin_type]
     CCP:RefreshPins(ScrySpy.custom_compass_pin)
@@ -424,12 +475,14 @@ end
 EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name.."_InitPins", EVENT_PLAYER_ACTIVATED, OnPlayerActivated)
 
 function ScrySpy.update_active_dig_sites()
+    ScrySpy.dm("Debug", "update_active_dig_sites")
     if #ScrySpy.antiquity_dig_sites >=1 then
         ScrySpy.scrying_antiquities = true
         -- also enable compas pins
         ScrySpy_SavedVars.custom_compass_pin = true
         -- also enable map pins
         ScrySpy_SavedVars.scryspy_map_pin = true
+        LMP:Enable(ScrySpy.scryspy_map_pin)
     else
         ScrySpy.scrying_antiquities = false
         -- also disable compas pins
@@ -438,9 +491,10 @@ function ScrySpy.update_active_dig_sites()
         ScrySpy_SavedVars.scryspy_map_pin = false
         -- release all the world objects
         ScrySpy.worldControlPool:ReleaseAllObjects()
+        LMP:Disable(ScrySpy.scryspy_map_pin)
     end
 
-    InitializePins()
+    LMP:RefreshPins(ScrySpy.scryspy_map_pin)
 
     if ScrySpy.scrying_antiquities then
         ScrySpy.Draw3DPins()
@@ -451,6 +505,9 @@ end
 
 -- MAP_PIN_TYPE_TRACKED_ANTIQUITY_DIG_SITE = 42
 function ScrySpy.update_antiquity_dig_sites()
+    ScrySpy.should_update_digsites = true
+    ScrySpy.dm("Debug", "update_antiquity_dig_sites")
+    ScrySpy.dm("Debug", LMP:GetZoneAndSubzone(true, false, true))
     local map_pin_keys = LMP.pinManager.m_keyToPinMapping["antiquityDigSite"]
     local polygon_information = LMP.pinManager["m_Active"]
 
@@ -470,30 +527,41 @@ function ScrySpy.update_antiquity_dig_sites()
                     local get_dimensions = my_control:GetDimensions()
                     if get_dimensions ~= nil then
                         temp_compas_pin_location.size = zo_round(math.max(get_dimensions)) + 50
+                    else
+                        ScrySpy.dm("Debug", "GetDimensions Unavailable")
+                        ScrySpy.should_update_digsites = false
                     end
+                else
+                    ScrySpy.dm("Debug", "GetControlByName Unavailable")
+                    ScrySpy.should_update_digsites = false
                 end
                 ScrySpy.antiquity_dig_sites[blob_key] = temp_compas_pin_location
+            else
+                ScrySpy.dm("Debug", "Blog Key Unavailable")
+                ScrySpy.should_update_digsites = false
             end
         end
     end
-    ScrySpy.update_active_dig_sites()
+    if ScrySpy.should_update_digsites then
+        ScrySpy.update_active_dig_sites()
+    end
 end
 
 local function OnTrackingUpdate(eventCode)
-    --d("OnTrackingUpdate")
+    ScrySpy.dm("Debug", "TrackingUpdate Occured")
     ScrySpy.update_antiquity_dig_sites()
-    --d(ScrySpy.antiquity_dig_sites)
-    --d(ScrySpy.scrying_antiquities)
-    --d("OnTrackingUpdate end")
 end
 EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name.."_DigSiteLocations", EVENT_ANTIQUITY_TRACKING_UPDATE, OnTrackingUpdate)
 
 local function OnRevealAntiquity(eventCode)
-    --d("OnRevealAntiquity")
+    ScrySpy.dm("Debug", "RevealAntiquity Occured")
     ScrySpy.update_antiquity_dig_sites()
-    --d(ScrySpy.antiquity_dig_sites)
-    --d(ScrySpy.scrying_antiquities)
-    --d("OnRevealAntiquity end")
+    if not ScrySpy.should_update_digsites then
+        ScrySpy.show_log = true
+        ScrySpy.dm("Debug", "Digsite Compass Pins Unavailable.")
+        ScrySpy.dm("Debug", "Use /ssrefresh when near Digsites to show pins.")
+        ScrySpy.show_log = false
+    end
 end
 EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name.."_DigSiteLocations", EVENT_REVEAL_ANTIQUITY_DIG_SITES_ON_MAP, OnRevealAntiquity)
 
@@ -544,9 +612,6 @@ local function OnLoad(eventCode, addOnName)
         else
             ScrySpy_SavedVars.digsite_spike_color = ScrySpy.scryspy_defaults.digsite_spike_color
         end
-        ScrySpy.RefreshPinFilters()
-        ScrySpy.RefreshPinLayout()
-        LMP:RefreshPins(ScrySpy.scryspy_map_pin)
     end
 
     if ScrySpy_SavedVars["location_info"]["eyevea_base_0"] then
@@ -554,6 +619,7 @@ local function OnLoad(eventCode, addOnName)
         ScrySpy_SavedVars["location_info"]["eyevea_base_0"] = nil
     end
 
+    InitializePins()
     ScrySpy.update_antiquity_dig_sites()
 
     --SLASH_COMMANDS["/ssreset"] = function() reset_zone_data() end
@@ -562,6 +628,6 @@ local function OnLoad(eventCode, addOnName)
 
     SLASH_COMMANDS["/ssrefresh"] = function() ScrySpy.update_antiquity_dig_sites() end
 
-
+	EVENT_MANAGER:UnregisterForEvent(ScrySpy.addon_name, EVENT_ADD_ON_LOADED)
 end
 EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name, EVENT_ADD_ON_LOADED, OnLoad)

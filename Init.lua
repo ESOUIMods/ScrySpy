@@ -13,12 +13,13 @@ scryspy_defaults = {
 ScrySpy_SavedVars.show_pins
 ]]--
 ScrySpy.addon_name = "ScrySpy"
-ScrySpy.addon_version = "1.18"
+ScrySpy.addon_version = "1.19"
 ScrySpy.addon_website = "https://www.esoui.com/downloads/info2647-ScrySpy.html"
 ScrySpy.custom_compass_pin = "compass_digsite" -- custom compas pin pin type
 ScrySpy.scryspy_map_pin = "scryspy_map_pin"
 ScrySpy.dig_site_pin = "dig_site_pin"
 ScrySpy.client_lang = GetCVar("language.2")
+ScrySpy.should_update_digsites = true
 
 ScrySpy.pin_textures = {
     [1] = "ScrySpy/img/spade_shovel_redx_marker.dds",
