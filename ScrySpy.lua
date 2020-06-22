@@ -93,7 +93,7 @@ local PIN_PRIORITY_OFFSET = 1
 -- ScrySpy
 dig_site_names = {
     ["en"] = "Dig Site",
-    ["fr"] = "Site De fouilles",
+    ["fr"] = "site de fouilles",
     ["de"] = "Ausgrabungsstätte",
     ["ru"] = "Место раскопок",
 }
