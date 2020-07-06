@@ -466,6 +466,7 @@ end
 
 local function OnPlayerActivated(eventCode)
     ScrySpy.RefreshPinLayout()
+    CCP.pinLayouts[ScrySpy.custom_compass_pin].maxDistance = ScrySpy_SavedVars.compass_max_distance
     CCP.pinLayouts[ScrySpy.custom_compass_pin].texture = ScrySpy.pin_textures[ScrySpy_SavedVars.pin_type]
     CCP:RefreshPins(ScrySpy.custom_compass_pin)
     ScrySpy.update_antiquity_dig_sites()
@@ -495,6 +496,7 @@ function ScrySpy.update_active_dig_sites()
     end
 
     LMP:RefreshPins(ScrySpy.scryspy_map_pin)
+    CCP:RefreshPins(ScrySpy.custom_compass_pin)
 
     if ScrySpy.scrying_antiquities then
         ScrySpy.Draw3DPins()
@@ -566,6 +568,7 @@ end
 EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name.."_DigSiteLocations", EVENT_REVEAL_ANTIQUITY_DIG_SITES_ON_MAP, OnRevealAntiquity)
 
 local function OnLoad(eventCode, addOnName)
+    if addOnName ~= ScrySpy.addon_name then return end
     -- turn the top level control into a 3d control
     ScrySpy_WorldPins:Create3DRenderSpace()
 
