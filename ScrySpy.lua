@@ -460,8 +460,35 @@ local function build_zone_data()
     ScrySpy_SavedVars.data_store[zone] = ScrySpy.combine_data(zone)
 end
 
-local function reset_zone_data()
+local function build_all_zone_data()
+    local all_internal_data = ZO_DeepTableCopy(ScrySpy.dig_sites)
+    local all_savedvariables_data = ZO_DeepTableCopy(ScrySpy_SavedVars["location_info"])
+    local current_internal_zone
     ScrySpy_SavedVars.data_store = {}
+
+    for zone, zone_data in pairs(all_internal_data) do
+        if not is_empty_or_nil(zone_data) then
+            if ScrySpy_SavedVars.data_store[zone] == nil then ScrySpy_SavedVars.data_store[zone] = {} end
+            ScrySpy_SavedVars.data_store[zone] = zone_data
+        end
+    end
+
+    for zone, zone_data in pairs(all_savedvariables_data) do
+        current_internal_zone = get_digsite_locations(zone)
+        if not is_empty_or_nil(current_internal_zone) then
+            for index, location_data in pairs(zone_data) do
+                if save_to_sv(current_internal_zone, location_data) then
+                    if ScrySpy_SavedVars.data_store[zone] == nil then ScrySpy_SavedVars.data_store[zone] = {} end
+                    table.insert(ScrySpy_SavedVars.data_store[zone], location_data)
+                end
+            end
+        end
+    end
+end
+
+local function reset_zone_data()
+    ScrySpy_SavedVars.data_store = nil
+    ScrySpy_SavedVars.cleaned_data_store = nil
 end
 
 local function OnPlayerActivated(eventCode)
@@ -567,6 +594,23 @@ local function OnRevealAntiquity(eventCode)
 end
 EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name.."_DigSiteLocations", EVENT_REVEAL_ANTIQUITY_DIG_SITES_ON_MAP, OnRevealAntiquity)
 
+local function purge_duplicate_data()
+    local all_savedvariables_data = ZO_DeepTableCopy(ScrySpy_SavedVars["location_info"])
+    local current_internal_zone
+    ScrySpy_SavedVars.location_info = {}
+    for zone, zone_data in pairs(all_savedvariables_data) do
+        current_internal_zone = get_digsite_locations(zone)
+        if not is_empty_or_nil(current_internal_zone) then
+            for index, location_data in pairs(zone_data) do
+                if save_to_sv(current_internal_zone, location_data) then
+                    if ScrySpy_SavedVars.location_info[zone] == nil then ScrySpy_SavedVars.location_info[zone] = {} end
+                    table.insert(ScrySpy_SavedVars.location_info[zone], location_data)
+                end
+            end
+        end
+    end
+end
+
 local function OnLoad(eventCode, addOnName)
     if addOnName ~= ScrySpy.addon_name then return end
     -- turn the top level control into a 3d control
@@ -621,6 +665,7 @@ local function OnLoad(eventCode, addOnName)
         ScrySpy_SavedVars["location_info"]["guildmaps/eyevea_base_0"] = ScrySpy_SavedVars["location_info"]["eyevea_base_0"]
         ScrySpy_SavedVars["location_info"]["eyevea_base_0"] = nil
     end
+    purge_duplicate_data()
 
     InitializePins()
     ScrySpy.update_antiquity_dig_sites()
@@ -628,6 +673,8 @@ local function OnLoad(eventCode, addOnName)
     --SLASH_COMMANDS["/ssreset"] = function() reset_zone_data() end
 
     --SLASH_COMMANDS["/ssbuild"] = function() build_zone_data() end
+
+    --SLASH_COMMANDS["/ssbuildall"] = function() build_all_zone_data() end
 
     SLASH_COMMANDS["/ssrefresh"] = function() ScrySpy.update_antiquity_dig_sites() end
 
