@@ -91,14 +91,14 @@ local PIN_NAME = "Dig Location"
 local PIN_PRIORITY_OFFSET = 1
 
 -- ScrySpy
-dig_site_names = {
+ScrySpy.dig_site_names = {
     ["en"] = "Dig Site",
     ["fr"] = "site de fouilles",
     ["de"] = "Ausgrabungsstätte",
     ["ru"] = "Место раскопок",
 }
 
-loc_index = {
+ScrySpy.loc_index = {
     x_pos  = 1,
     y_pos  = 2,
     x_gps  = 3,
@@ -175,7 +175,7 @@ local function save_to_sv(locations_table, location)
     ]]--
     local save_location = true
     for num_entry, digsite_loc in ipairs(locations_table) do
-        local distance = zo_round(GPS:GetLocalDistanceInMeters(digsite_loc[loc_index.x_pos], digsite_loc[loc_index.y_pos], location[loc_index.x_pos], location[loc_index.y_pos]))
+        local distance = zo_round(GPS:GetLocalDistanceInMeters(digsite_loc[ScrySpy.loc_index.x_pos], digsite_loc[ScrySpy.loc_index.y_pos], location[ScrySpy.loc_index.x_pos], location[ScrySpy.loc_index.y_pos]))
         --d(distance)
         if distance <= 10 then
             --d("less then 10 to close to me")
@@ -209,13 +209,13 @@ local function save_dig_site_location()
     if is_empty_or_nil(dig_sites_sv_table) then dig_sites_sv_table = {} end
 
     local location = {
-        [loc_index.x_pos] = x_pos,
-        [loc_index.y_pos] = y_pos,
-        [loc_index.x_gps] = x_gps,
-        [loc_index.y_gps] = y_gps,
-        [loc_index.worldX] = worldX,
-        [loc_index.worldY] = worldY,
-        [loc_index.worldZ] = worldZ,
+        [ScrySpy.loc_index.x_pos] = x_pos,
+        [ScrySpy.loc_index.y_pos] = y_pos,
+        [ScrySpy.loc_index.x_gps] = x_gps,
+        [ScrySpy.loc_index.y_gps] = y_gps,
+        [ScrySpy.loc_index.worldX] = worldX,
+        [ScrySpy.loc_index.worldY] = worldY,
+        [ScrySpy.loc_index.worldZ] = worldZ,
     }
     if save_to_sv(dig_sites_table, location) and save_to_sv(dig_sites_sv_table, location) then
         ScrySpy.dm("Debug", "Saving Location")
@@ -271,7 +271,7 @@ function ScrySpy.Draw3DPins()
                 iconControl:Set3DRenderSpaceUsesDepthBuffer(true)
             end
             iconControl:SetTexture(ScrySpy.pin_textures[ScrySpy_SavedVars.digsite_pin_type])
-            iconControl:Set3DRenderSpaceOrigin(pinData[loc_index.worldX]/100, (pinData[loc_index.worldY]/100) + 2.5, pinData[loc_index.worldZ]/100)
+            iconControl:Set3DRenderSpaceOrigin(pinData[ScrySpy.loc_index.worldX]/100, (pinData[ScrySpy.loc_index.worldY]/100) + 2.5, pinData[ScrySpy.loc_index.worldZ]/100)
             iconControl:Set3DLocalDimensions(0.30 * size + 0.6, 0.30 * size + 0.6)
 
             local spikeControl = pinControl:GetNamedChild("Spike")
@@ -280,7 +280,7 @@ function ScrySpy.Draw3DPins()
                 spikeControl:Set3DRenderSpaceUsesDepthBuffer(true)
             end
             spikeControl:SetColor(ScrySpy.unpack_color_table(ScrySpy_SavedVars.digsite_spike_color))
-            spikeControl:Set3DRenderSpaceOrigin(pinData[loc_index.worldX]/100, (pinData[loc_index.worldY]/100) + 1.0, pinData[loc_index.worldZ]/100)
+            spikeControl:Set3DRenderSpaceOrigin(pinData[ScrySpy.loc_index.worldX]/100, (pinData[ScrySpy.loc_index.worldY]/100) + 1.0, pinData[ScrySpy.loc_index.worldZ]/100)
             spikeControl:Set3DLocalDimensions(0.25 * size + 0.75, 0.75 * size + 1.25)
         end
 
@@ -307,7 +307,7 @@ local function OnInteract(event_code, client_interact_result, interact_target_na
     local text = zo_strformat(SI_CHAT_MESSAGE_FORMATTER, interact_target_name)
     --d(text)
     --d("OnInteract")
-    if text == dig_site_names[ScrySpy.client_lang] then
+    if text == ScrySpy.dig_site_names[ScrySpy.client_lang] then
         save_dig_site_location()
     end
 end
@@ -332,7 +332,7 @@ end
 function ScrySpy.get_pin_data(zone)
     local function digsite_in_range(location)
         for key, compas_pin_loc in pairs(ScrySpy.antiquity_dig_sites) do
-            local distance = zo_round(GPS:GetLocalDistanceInMeters(compas_pin_loc.x, compas_pin_loc.y, location[loc_index.x_pos], location[loc_index.y_pos]))
+            local distance = zo_round(GPS:GetLocalDistanceInMeters(compas_pin_loc.x, compas_pin_loc.y, location[ScrySpy.loc_index.x_pos], location[ScrySpy.loc_index.y_pos]))
             if distance <= ScrySpy.antiquity_dig_sites[key].size then
                 return true
             end
@@ -342,7 +342,7 @@ function ScrySpy.get_pin_data(zone)
 
     local function in_mod_digsite_pool(main_table, location)
         for _, compas_pin_loc in pairs(main_table) do
-            local distance = zo_round(GPS:GetLocalDistanceInMeters(compas_pin_loc[loc_index.x_pos], compas_pin_loc[loc_index.y_pos], location[loc_index.x_pos], location[loc_index.y_pos]))
+            local distance = zo_round(GPS:GetLocalDistanceInMeters(compas_pin_loc[ScrySpy.loc_index.x_pos], compas_pin_loc[ScrySpy.loc_index.y_pos], location[ScrySpy.loc_index.x_pos], location[ScrySpy.loc_index.y_pos]))
             if distance <= 10 then
                 return true
             end
@@ -392,7 +392,7 @@ local function InitializePins()
         local mapData = ScrySpy.get_pin_data(zone) or { }
         if mapData then
             for index, pinData in pairs(mapData) do
-                LMP:CreatePin(ScrySpy.scryspy_map_pin, pinData, pinData[loc_index.x_pos], pinData[loc_index.y_pos])
+                LMP:CreatePin(ScrySpy.scryspy_map_pin, pinData, pinData[ScrySpy.loc_index.x_pos], pinData[ScrySpy.loc_index.y_pos])
             end
         end
     end
@@ -428,7 +428,7 @@ local function InitializePins()
             local mapData = ScrySpy.get_pin_data(zone) or { }
             if mapData then
                 for _, pinData in ipairs(mapData) do
-                    CCP.pinManager:CreatePin(ScrySpy.custom_compass_pin, pinData, pinData[loc_index.x_pos], pinData[loc_index.y_pos])
+                    CCP.pinManager:CreatePin(ScrySpy.custom_compass_pin, pinData, pinData[ScrySpy.loc_index.x_pos], pinData[ScrySpy.loc_index.y_pos])
                 end
             end
         end
@@ -609,7 +609,7 @@ local function purge_duplicate_data()
             end
         else
             ScrySpy.dm("Debug", "ScrySpy nothing to loop over")
-            ScrySpy_SavedVars.location_info[zone] = all_savedvariables_data[zone]
+            ScrySpy_SavedVars.location_info[zone] = all_savedvariables_data[zone] or {}
         end
     end
 end
