@@ -12,7 +12,7 @@ if LibDebugLogger then
     local logger = LibDebugLogger.Create(ScrySpy.addon_name)
     ScrySpy.logger = logger
 end
-ScrySpy.show_log = true
+ScrySpy.show_log = false
 local SDLV = DebugLogViewer
 
 local function create_log(log_type, log_content)
