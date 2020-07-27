@@ -12,7 +12,7 @@ if LibDebugLogger then
     local logger = LibDebugLogger.Create(ScrySpy.addon_name)
     ScrySpy.logger = logger
 end
-ScrySpy.show_log = false
+ScrySpy.show_log = true
 local SDLV = DebugLogViewer
 
 local function create_log(log_type, log_content)
@@ -607,6 +607,9 @@ local function purge_duplicate_data()
                     table.insert(ScrySpy_SavedVars.location_info[zone], location_data)
                 end
             end
+        else
+            ScrySpy.dm("Debug", "ScrySpy nothing to loop over")
+            ScrySpy_SavedVars.location_info[zone] = all_savedvariables_data[zone]
         end
     end
 end
