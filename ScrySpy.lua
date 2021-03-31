@@ -12,7 +12,7 @@ if LibDebugLogger then
     local logger = LibDebugLogger.Create(ScrySpy.addon_name)
     ScrySpy.logger = logger
 end
-ScrySpy.show_log = false
+ScrySpy.show_log = true
 local SDLV = DebugLogViewer
 
 local function create_log(log_type, log_content)
@@ -92,9 +92,13 @@ local PIN_PRIORITY_OFFSET = 1
 
 -- ScrySpy
 ScrySpy.dig_site_names = {
-    ["en"] = "Dig Site",
-    ["fr"] = "site de fouilles",
     ["de"] = "Ausgrabungsstätte",
+    ["en"] = "Dig Site",
+    ["es"] = "yacimiento",
+    ["fr"] = "site de fouilles",
+    ["kb"] = "縜潴 頄覥",
+    ["kr"] = "縜潴 頄覥",
+    ["pl"] = "Wykopalisko",
     ["ru"] = "Место раскопок",
 }
 
@@ -303,12 +307,13 @@ end
 
 local function OnInteract(event_code, client_interact_result, interact_target_name)
     ScrySpy.dm("Debug", "OnInteract Occured")
-    --d(client_interact_result)
+    ScrySpy.dm("Debug", client_interact_result)
     local text = zo_strformat(SI_CHAT_MESSAGE_FORMATTER, interact_target_name)
-    --d(text)
-    --d("OnInteract")
-    if text == ScrySpy.dig_site_names[ScrySpy.client_lang] then
+    ScrySpy.dm("Debug", text)
+    if text == ScrySpy.dig_site_names[ScrySpy.effective_lang] then
         save_dig_site_location()
+    else
+        ScrySpy.dm("Debug", "Did not match")
     end
 end
 EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name,EVENT_CLIENT_INTERACT_RESULT, OnInteract)
