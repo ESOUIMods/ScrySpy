@@ -12,6 +12,7 @@ local pin_textures_list = {
     [7] = "Tracking Icon",
     [8] = "Eye",
     [9] = "Holy Grail",
+    [10] = "Spade",
 }
 
 local panelData = {
@@ -147,6 +148,19 @@ local optionsTable = {
         end,
         default = ScrySpy.scryspy_defaults.digsite_spike_color,
     },
+    --[[
+    -- Show degub messages on or off
+    {
+        type = "checkbox",
+        name = GetString(spike_debug),
+        tooltip = GetString(spike_debug_desc),
+        getFunc = function() return ScrySpy.show_log end,
+        setFunc = function(value)
+                ScrySpy.show_log = value
+            end,
+        default = false,
+    },
+    ]]--
 }
 
 local function OnPlayerActivated(event)

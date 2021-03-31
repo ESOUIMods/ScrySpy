@@ -45,7 +45,7 @@ scryspy_defaults = {
 ScrySpy_SavedVars.show_pins
 ]]--
 ScrySpy.addon_name = "ScrySpy"
-ScrySpy.addon_version = "1.30"
+ScrySpy.addon_version = "1.31"
 ScrySpy.addon_website = "https://www.esoui.com/downloads/info2647-ScrySpy.html"
 ScrySpy.custom_compass_pin = "compass_digsite" -- custom compas pin pin type
 ScrySpy.scryspy_map_pin = "scryspy_map_pin"
@@ -62,6 +62,7 @@ ScrySpy.pin_textures = {
     [7] = "esoui/art/antiquities/keyboard/trackedantiquityicon.dds",
     [8] = "esoui/art/inventory/inventory_icon_visible.dds",
     [9] = "esoui/art/inventory/inventory_quest_tabicon_active.dds",
+    [10] = "ScrySpy/img/cute_spade.dds",
 }
 
 function ScrySpy.unpack_color_table(the_table)
@@ -103,9 +104,9 @@ ScrySpy.scryspy_defaults = {
 		[ScrySpy.dig_site_pin] = true, -- toggle show 3d pin in overland
 	},
     ["digsite_spike_color"] = {
-        [1] = 1,
-        [2] = 1,
-        [3] = 1,
+        [1] = 0.0862745121,
+        [2] = 0.7215686440,
+        [3] = 0.9490196109,
         [4] = 1,
     },
 }
