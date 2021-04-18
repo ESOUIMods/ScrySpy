@@ -1,23 +1,22 @@
---[[
+
 local strings = {
     mod_title                           = "ScrySpy",
-    map_pin_texture_text                = "Select map pin icons",
-    map_pin_texture_desc                = "Select map pin icons.",
-    digsite_texture_text                = "Select 3D-Pin Digsite icons",
-    digsite_texture_desc                = "Select 3D-Pin Digsite icons.",
-    pin_size                            = "Pin size",
-    pin_size_desc                       = "Set the size of the map pins.",
-    pin_layer                           = "Pin layer",
-    pin_layer_desc                      = "Set the layer of the map pins so they overlap others at the same location.",
-    show_digsites_on_compas             = "Show Digsites on the compass",
-    show_digsites_on_compas_desc        = "Show/hide icons for Digsites on the compass.",
-    compass_max_dist                    = "Max pin distance",
-    compass_max_dist_desc               = "The maximum distance for pins to appear on the compass.",
-    spike_pincolor                      = "Color for lower 3D pin",
-    spike_pincolor_desc                 = "The color of the lower section of the 3D pin.",
+    map_pin_texture_text                = "Wybierz ikonę punktów na mapie",
+    map_pin_texture_desc                = "Wybiera ikonę punktów na mapie.",
+    digsite_texture_text                = "Wybierz ikonę punktu 3D wykopaliska",
+    digsite_texture_desc                = "Wybiera ikonę punktu 3D wykopaliska.",
+    pin_size                            = "Wielkość punktów",
+    pin_size_desc                       = "Ustawia wielkość punktu na mapie.",
+    pin_layer                           = "Warstwa punktu",
+    pin_layer_desc                      = "Ustaw warstwę punktów mapy tak, aby zachodziły na inne w tym samym miejscu.",
+    show_digsites_on_compas             = "Pokaż wykopaliska na kompasie",
+    show_digsites_on_compas_desc        = "Pokazuje/ukrywa ikonę wykopalisk na kompasie.",
+    compass_max_dist                    = "Maksymalna odległość punktów",
+    compass_max_dist_desc               = "Maksymalna odległość, w jakiej punkty pojawiają się na kompasie.",
+    spike_pincolor                      = "Kolor dla dolnej części punktu 3D",
+    spike_pincolor_desc                 = "Kolor dolnej części punktu 3D.",
 }
 
 for stringId, stringValue in pairs(strings) do
     SafeAddString(_G[stringId], stringValue, 1)
 end
-]]--
