@@ -18,7 +18,7 @@ end
 ----- lang setup                            -----
 -------------------------------------------------
 
-ScrySpy.client_lang = GetCVar("language.2")
+ScrySpy.client_lang = GetCVar("Language.2")
 ScrySpy.effective_lang = nil
 ScrySpy.supported_lang = { "de", "en", "es", "fr", "kb", "kr", "pl", "ru", }
 if is_in(ScrySpy.client_lang, ScrySpy.supported_lang) then

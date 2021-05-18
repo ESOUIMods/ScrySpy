@@ -316,7 +316,7 @@ local function OnInteract(event_code, client_interact_result, interact_target_na
         ScrySpy.dm("Debug", "Did not match")
     end
 end
-EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name,EVENT_CLIENT_INTERACT_RESULT, OnInteract)
+EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name, EVENT_CLIENT_INTERACT_RESULT, OnInteract)
 
 function ScrySpy.combine_data(zone)
     ScrySpy_SavedVars.location_info = ScrySpy_SavedVars.location_info or { }
