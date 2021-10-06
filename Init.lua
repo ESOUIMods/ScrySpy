@@ -45,7 +45,7 @@ scryspy_defaults = {
 ScrySpy_SavedVars.show_pins
 ]]--
 ScrySpy.addon_name = "ScrySpy"
-ScrySpy.addon_version = "1.32"
+ScrySpy.addon_version = "1.33"
 ScrySpy.addon_website = "https://www.esoui.com/downloads/info2647-ScrySpy.html"
 ScrySpy.custom_compass_pin = "compass_digsite" -- custom compas pin pin type
 ScrySpy.scryspy_map_pin = "scryspy_map_pin"
