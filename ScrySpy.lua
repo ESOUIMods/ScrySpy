@@ -180,12 +180,12 @@ local function save_to_sv(locations_table, location)
     local save_location = true
     for num_entry, digsite_loc in ipairs(locations_table) do
         local distance = zo_round(GPS:GetLocalDistanceInMeters(digsite_loc[ScrySpy.loc_index.x_pos], digsite_loc[ScrySpy.loc_index.y_pos], location[ScrySpy.loc_index.x_pos], location[ScrySpy.loc_index.y_pos]))
-        --d(distance)
+        -- ScrySpy.dm("Debug", string.format("save_to_sv from location table distance: %s", distance))
         if distance <= 10 then
-            --d("less then 10 to close to me")
+            -- ScrySpy.dm("Debug", "less then 10 to close to me")
             return false
         else
-            --d("more then 10, far away, save it")
+            -- ScrySpy.dm("Debug", "more then 10, far away, save it")
         end
     end
     return save_location
@@ -334,10 +334,14 @@ function ScrySpy.combine_data(zone)
     return mapData
 end
 
+-- /script d(zo_round(LibGPS3:GetLocalDistanceInMeters(0.82357305288315, 0.36382120383569, 0.904232442379, 0.78514248132706)))
 function ScrySpy.get_pin_data(zone)
+    --ScrySpy.dm("Debug", "get_pin_data")
     local function digsite_in_range(location)
         for key, compas_pin_loc in pairs(ScrySpy.antiquity_dig_sites) do
             local distance = zo_round(GPS:GetLocalDistanceInMeters(compas_pin_loc.x, compas_pin_loc.y, location[ScrySpy.loc_index.x_pos], location[ScrySpy.loc_index.y_pos]))
+            --ScrySpy.dm("Debug", string.format("digsite_in_range distance: %s", distance))
+            --ScrySpy.dm("Debug", string.format("digsite_in_range dig site size: %s", ScrySpy.antiquity_dig_sites[key].size))
             if distance <= ScrySpy.antiquity_dig_sites[key].size then
                 return true
             end
@@ -348,6 +352,7 @@ function ScrySpy.get_pin_data(zone)
     local function in_mod_digsite_pool(main_table, location)
         for _, compas_pin_loc in pairs(main_table) do
             local distance = zo_round(GPS:GetLocalDistanceInMeters(compas_pin_loc[ScrySpy.loc_index.x_pos], compas_pin_loc[ScrySpy.loc_index.y_pos], location[ScrySpy.loc_index.x_pos], location[ScrySpy.loc_index.y_pos]))
+            -- ScrySpy.dm("Debug", string.format("in_mod_digsite_pool distance: %s", distance))
             if distance <= 10 then
                 return true
             end
@@ -363,15 +368,19 @@ function ScrySpy.get_pin_data(zone)
     -- this is the end result if within range
     local mod_digsite_pool = { }
 
+    --ScrySpy.show_log = false
     for num_entry, digsite_loc in ipairs(ScrySpy.dig_sites[zone]) do
         if digsite_in_range(digsite_loc) then
             table.insert(mod_digsite_pool, digsite_loc)
+            -- ScrySpy.dm("Debug", "digsite pool updated")
         end
     end
+    --ScrySpy.show_log = true
 
     local dig_sites_sv_table = get_digsite_loc_sv(zone) or { }
     for num_entry, digsite_loc in ipairs(dig_sites_sv_table) do
         if digsite_in_range(digsite_loc) and not in_mod_digsite_pool(mod_digsite_pool, digsite_loc) then
+            --ScrySpy.dm("Debug", "digsite pool updated")
             table.insert(mod_digsite_pool, digsite_loc)
         end
     end
@@ -544,6 +553,8 @@ function ScrySpy.update_antiquity_dig_sites()
     ScrySpy.dm("Debug", LMP:GetZoneAndSubzone(true, false, true))
     local map_pin_keys = LMP.pinManager.m_keyToPinMapping["antiquityDigSite"]
     local polygon_information = LMP.pinManager["m_Active"]
+    local panAndZoomInfo = ZO_WorldMap_GetPanAndZoom()
+    local zoomFactor = -1
 
     ScrySpy.antiquity_dig_sites = {}
 
@@ -554,13 +565,20 @@ function ScrySpy.update_antiquity_dig_sites()
             temp_compas_pin_location.y = polygon_information[pin_information]["normalizedY"]
             blob_key = polygon_information[pin_information]["polygonBlobKey"]
             if blob_key then
-                -- set to 200 by default, then update as long as the control exists
-                temp_compas_pin_location.size = 200
-                local my_control = WINDOW_MANAGER:GetControlByName("ZO_PinPolygonBlob", blob_key)
+                -- set to 230 by default, then update as long as the control exists
+                temp_compas_pin_location.size = 290
+                local my_control = WINDOW_MANAGER:GetControlByName("ZO_WorldMapContainerPinPolygonBlob", blob_key)
                 if my_control then
+                   zoomFactor = 10
                     local get_dimensions = my_control:GetDimensions()
+                    if panAndZoomInfo and panAndZoomInfo.currentNormalizedZoom then
+                        ScrySpy.dm("Debug", panAndZoomInfo.currentNormalizedZoom)
+                        zoomFactor = 290  - (( panAndZoomInfo.currentNormalizedZoom * 10 ) * 10)
+                        ScrySpy.dm("Debug", string.format("zoomFactor %s", zoomFactor))
+                    end
                     if get_dimensions ~= nil then
-                        temp_compas_pin_location.size = zo_round(math.max(get_dimensions)) + 50
+                        -- ScrySpy.dm("Debug", string.format("update_antiquity_dig_sites get_dimensions", get_dimensions))
+                        temp_compas_pin_location.size = zo_round(math.max(get_dimensions)) + zoomFactor
                     else
                         ScrySpy.dm("Debug", "GetDimensions Unavailable")
                         ScrySpy.should_update_digsites = false
