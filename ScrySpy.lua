@@ -12,20 +12,26 @@ if LibDebugLogger then
     local logger = LibDebugLogger.Create(ScrySpy.addon_name)
     ScrySpy.logger = logger
 end
-ScrySpy.show_log = false
 local SDLV = DebugLogViewer
+if SDLV then ScrySpy.viewer = true else ScrySpy.viewer = false end
 
 local function create_log(log_type, log_content)
-    if ScrySpy.show_log and ScrySpy.logger and SDLV then
-        if log_type == "Debug" then
-            ScrySpy.logger:Debug(log_content)
-        end
-        if log_type == "Verbose" then
-            ScrySpy.logger:Verbose(log_content)
-        end
-    elseif ScrySpy.show_log and not SDLV then
-        d(log_content)
-    end
+  if not ScrySpy.viewer and log_type == "Info" then
+    CHAT_ROUTER:AddSystemMessage(log_content)
+    return
+  end
+  if log_type == "Debug" then
+    ScrySpy.logger:Debug(log_content)
+  end
+  if log_type == "Info" then
+    ScrySpy.logger:Info(log_content)
+  end
+  if log_type == "Verbose" then
+    ScrySpy.logger:Verbose(log_content)
+  end
+  if log_type == "Warn" then
+    ScrySpy.logger:Warn(log_content)
+  end
 end
 
 local function emit_message(log_type, text)
@@ -222,13 +228,13 @@ local function save_dig_site_location()
         [ScrySpy.loc_index.worldZ] = worldZ,
     }
     if save_to_sv(dig_sites_table, location) and save_to_sv(dig_sites_sv_table, location) then
-        ScrySpy.dm("Debug", "Saving Location")
+        --ScrySpy.dm("Debug", "Saving Location")
         table.insert(ScrySpy_SavedVars.location_info[zone], location)
         LMP:RefreshPins(ScrySpy.scryspy_map_pin)
         CCP:RefreshPins(ScrySpy.custom_compass_pin)
         ScrySpy.Draw3DPins()
     else
-        ScrySpy.dm("Debug", "No need to save location")
+        --ScrySpy.dm("Debug", "No need to save location")
     end
 end
 
@@ -306,14 +312,14 @@ function ScrySpy.Draw3DPins()
 end
 
 local function OnInteract(event_code, client_interact_result, interact_target_name)
-    ScrySpy.dm("Debug", "OnInteract Occured")
-    ScrySpy.dm("Debug", client_interact_result)
+    --ScrySpy.dm("Debug", "OnInteract Occured")
+    --ScrySpy.dm("Debug", client_interact_result)
     local text = zo_strformat(SI_CHAT_MESSAGE_FORMATTER, interact_target_name)
-    ScrySpy.dm("Debug", text)
+    --ScrySpy.dm("Debug", text)
     if text == ScrySpy.dig_site_names[ScrySpy.effective_lang] then
         save_dig_site_location()
     else
-        ScrySpy.dm("Debug", "Did not match")
+        --ScrySpy.dm("Debug", "Did not match")
     end
 end
 EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name, EVENT_CLIENT_INTERACT_RESULT, OnInteract)
@@ -517,7 +523,7 @@ end
 EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name.."_InitPins", EVENT_PLAYER_ACTIVATED, OnPlayerActivated)
 
 function ScrySpy.update_active_dig_sites()
-    ScrySpy.dm("Debug", "update_active_dig_sites")
+    --ScrySpy.dm("Debug", "update_active_dig_sites")
     if #ScrySpy.antiquity_dig_sites >=1 then
         ScrySpy.scrying_antiquities = true
         -- also enable compas pins
@@ -549,8 +555,8 @@ end
 -- MAP_PIN_TYPE_TRACKED_ANTIQUITY_DIG_SITE = 42
 function ScrySpy.update_antiquity_dig_sites()
     ScrySpy.should_update_digsites = true
-    ScrySpy.dm("Debug", "update_antiquity_dig_sites")
-    ScrySpy.dm("Debug", LMP:GetZoneAndSubzone(true, false, true))
+    --ScrySpy.dm("Debug", "update_antiquity_dig_sites")
+    --ScrySpy.dm("Debug", LMP:GetZoneAndSubzone(true, false, true))
     local map_pin_keys = LMP.pinManager.m_keyToPinMapping["antiquityDigSite"]
     local polygon_information = LMP.pinManager["m_Active"]
     local panAndZoomInfo = ZO_WorldMap_GetPanAndZoom()
@@ -572,24 +578,24 @@ function ScrySpy.update_antiquity_dig_sites()
                    zoomFactor = 10
                     local get_dimensions = my_control:GetDimensions()
                     if panAndZoomInfo and panAndZoomInfo.currentNormalizedZoom then
-                        ScrySpy.dm("Debug", panAndZoomInfo.currentNormalizedZoom)
+                        --ScrySpy.dm("Debug", panAndZoomInfo.currentNormalizedZoom)
                         zoomFactor = 290  - (( panAndZoomInfo.currentNormalizedZoom * 10 ) * 10)
-                        ScrySpy.dm("Debug", string.format("zoomFactor %s", zoomFactor))
+                        --ScrySpy.dm("Debug", string.format("zoomFactor %s", zoomFactor))
                     end
                     if get_dimensions ~= nil then
                         -- ScrySpy.dm("Debug", string.format("update_antiquity_dig_sites get_dimensions", get_dimensions))
                         temp_compas_pin_location.size = zo_round(math.max(get_dimensions)) + zoomFactor
                     else
-                        ScrySpy.dm("Debug", "GetDimensions Unavailable")
+                        --ScrySpy.dm("Debug", "GetDimensions Unavailable")
                         ScrySpy.should_update_digsites = false
                     end
                 else
-                    ScrySpy.dm("Debug", "GetControlByName Unavailable")
+                    --ScrySpy.dm("Debug", "GetControlByName Unavailable")
                     ScrySpy.should_update_digsites = false
                 end
                 ScrySpy.antiquity_dig_sites[blob_key] = temp_compas_pin_location
             else
-                ScrySpy.dm("Debug", "Blog Key Unavailable")
+                --ScrySpy.dm("Debug", "Blog Key Unavailable")
                 ScrySpy.should_update_digsites = false
             end
         end
@@ -600,19 +606,17 @@ function ScrySpy.update_antiquity_dig_sites()
 end
 
 local function OnTrackingUpdate(eventCode)
-    ScrySpy.dm("Debug", "TrackingUpdate Occured")
+    --ScrySpy.dm("Debug", "TrackingUpdate Occured")
     ScrySpy.update_antiquity_dig_sites()
 end
 EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name.."_DigSiteLocations", EVENT_ANTIQUITY_TRACKING_UPDATE, OnTrackingUpdate)
 
 local function OnRevealAntiquity(eventCode)
-    ScrySpy.dm("Debug", "RevealAntiquity Occured")
+    --ScrySpy.dm("Debug", "RevealAntiquity Occured")
     ScrySpy.update_antiquity_dig_sites()
     if not ScrySpy.should_update_digsites then
-        ScrySpy.show_log = true
-        ScrySpy.dm("Debug", "Digsite Compass Pins Unavailable.")
-        ScrySpy.dm("Debug", "Use /ssrefresh when near Digsites to show pins.")
-        ScrySpy.show_log = false
+        ScrySpy.dm("Info", "Digsite Compass Pins Unavailable.")
+        ScrySpy.dm("Info", "Use /ssrefresh when near Digsites to show pins.")
     end
 end
 EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name.."_DigSiteLocations", EVENT_REVEAL_ANTIQUITY_DIG_SITES_ON_MAP, OnRevealAntiquity)
@@ -631,7 +635,7 @@ local function purge_duplicate_data()
                 end
             end
         else
-            ScrySpy.dm("Debug", "ScrySpy nothing to loop over")
+            --ScrySpy.dm("Debug", "ScrySpy nothing to loop over")
             ScrySpy_SavedVars.location_info[zone] = all_savedvariables_data[zone] or {}
         end
     end
