@@ -4,32 +4,33 @@ local Lib3D = Lib3D
 local CCP = COMPASS_PINS
 local LAM = LibAddonMenu2
 
----------------------------------------
------ Degub Logging               -----
----------------------------------------
-
+-------------------------------------------------
+----- Logger Function                       -----
+-------------------------------------------------
+ScrySpy.show_log = false
 if LibDebugLogger then
-  local logger = LibDebugLogger.Create(ScrySpy.addon_name)
-  ScrySpy.logger = logger
+  ScrySpy.logger = LibDebugLogger.Create(ScrySpy.addon_name)
 end
-local SDLV = DebugLogViewer
-if SDLV then ScrySpy.viewer = true else ScrySpy.viewer = false end
+local logger
+local viewer
+if DebugLogViewer then viewer = true else viewer = false end
+if LibDebugLogger then logger = true else logger = false end
 
 local function create_log(log_type, log_content)
-  if not ScrySpy.viewer and log_type == "Info" then
+  if not viewer and log_type == "Info" then
     CHAT_ROUTER:AddSystemMessage(log_content)
     return
   end
-  if log_type == "Debug" then
+  if logger and log_type == "Debug" then
     ScrySpy.logger:Debug(log_content)
   end
-  if log_type == "Info" then
+  if logger and log_type == "Info" then
     ScrySpy.logger:Info(log_content)
   end
-  if log_type == "Verbose" then
+  if logger and log_type == "Verbose" then
     ScrySpy.logger:Verbose(log_content)
   end
-  if log_type == "Warn" then
+  if logger and log_type == "Warn" then
     ScrySpy.logger:Warn(log_content)
   end
 end
@@ -61,7 +62,8 @@ local function emit_table(log_type, t, indent, table_history)
   end
 end
 
-function ScrySpy.dm(log_type, ...)
+function ScrySpy:dm(log_type, ...)
+  if not ScrySpy.show_log then return end
   for i = 1, select("#", ...) do
     local value = select(i, ...)
     if (type(value) == "table") then
