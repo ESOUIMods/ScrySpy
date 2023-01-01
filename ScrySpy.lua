@@ -645,6 +645,7 @@ end
 
 local function OnLoad(eventCode, addOnName)
   if addOnName ~= ScrySpy.addon_name then return end
+    ScrySpy:dm("Debug", "OnAddOnLoaded")
   -- turn the top level control into a 3d control
   ScrySpy_WorldPins:Create3DRenderSpace()
 
