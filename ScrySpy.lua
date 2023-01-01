@@ -7,7 +7,7 @@ local LAM = LibAddonMenu2
 -------------------------------------------------
 ----- Logger Function                       -----
 -------------------------------------------------
-ScrySpy.show_log = false
+ScrySpy.show_log = true
 if LibDebugLogger then
   ScrySpy.logger = LibDebugLogger.Create(ScrySpy.addon_name)
 end
