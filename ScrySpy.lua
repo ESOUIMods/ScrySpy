@@ -3,6 +3,7 @@ local GPS = LibGPS3
 local Lib3D = Lib3D
 local CCP = COMPASS_PINS
 local LAM = LibAddonMenu2
+local LMD = LibMapData
 
 -------------------------------------------------
 ----- Logger Function                       -----
@@ -169,6 +170,17 @@ ScrySpy.worldControlPool = ZO_ControlPool:New("ScrySpy_WorldPin", ScrySpy_WorldP
 ScrySpy.antiquity_dig_sites = {}
 ScrySpy.scrying_antiquities = false
 
+local lastMapTexture
+local mapData
+local function UpdateScrySpyMapData()
+  --internal:dm("Debug", "UpdateScrySpyMapData")
+  if LMD.mapTexture ~= lastMapTexture then
+    lastMapTexture = LMD.mapTexture
+    local zone = LMP:GetZoneAndSubzone(true, false, true)
+    mapData = ScrySpy.get_pin_data(zone)
+  end
+end
+
 local function get_digsite_loc_sv(zone)
   --d(zone)
   if is_empty_or_nil(ScrySpy_SavedVars.location_info[zone]) then
@@ -261,9 +273,7 @@ end
 function ScrySpy.Draw3DPins()
   EVENT_MANAGER:UnregisterForUpdate("DigSite")
 
-  local zone = LMP:GetZoneAndSubzone(true, false, true)
-
-  local mapData = ScrySpy.get_pin_data(zone) or { }
+  UpdateScrySpyMapData()
   -- pseudo_pin_location
   if mapData then
     local worldX, worldZ, worldY = WorldPositionToGuiRender3DPosition(0, 0, 0)
@@ -400,7 +410,6 @@ end
 
 local function InitializePins()
   local function MapPinAddCallback(pinType)
-    local zone = LMP:GetZoneAndSubzone(true, false, true)
     --[[
     Problem encountered. When standing in the ["skyrim/solitudeoutlawsrefuge_0"]
 
@@ -412,7 +421,7 @@ local function InitializePins()
     meaning the game will look for 1178 and ["craglorn/craglorn_base_0"] which is invalid
     ]]--
     --d(zone)
-    local mapData = ScrySpy.get_pin_data(zone) or { }
+   UpdateScrySpyMapData()
     if mapData then
       for index, pinData in pairs(mapData) do
         LMP:CreatePin(ScrySpy.scryspy_map_pin, pinData, pinData[ScrySpy.loc_index.x_pos], pinData[ScrySpy.loc_index.y_pos])
@@ -446,8 +455,7 @@ local function InitializePins()
 
   local function compass_callback()
     if GetMapType() <= MAPTYPE_ZONE and ScrySpy_SavedVars.custom_compass_pin then
-      local zone = LMP:GetZoneAndSubzone(true, false, true)
-      local mapData = ScrySpy.get_pin_data(zone) or { }
+      UpdateScrySpyMapData()
       if mapData then
         for _, pinData in ipairs(mapData) do
           CCP.pinManager:CreatePin(ScrySpy.custom_compass_pin, pinData, pinData[ScrySpy.loc_index.x_pos], pinData[ScrySpy.loc_index.y_pos])
