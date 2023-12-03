@@ -3,9 +3,9 @@
 ## Author: Sharlikran
 ## Version: 1.42
 ## AddOnVersion: 142
-## APIVersion: 101038 101039
+## APIVersion: 101039 101040
 ## SavedVariables: ScrySpy_SavedVars
-## DependsOn: CustomCompassPins>=32 LibMapPins-1.0>=10038 LibGPS>=70 Lib3D>=312 LibAddonMenu-2.0>=34
+## DependsOn: CustomCompassPins>=32 LibMapPins-1.0>=10038 LibGPS>=70 Lib3D>=312 LibAddonMenu-2.0>=35
 ## DependsOn: LibMapData>=111
 ## OptionalDependsOn: LibDebugLogger>=196 DebugLogViewer
 
