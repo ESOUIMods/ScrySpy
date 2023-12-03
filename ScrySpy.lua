@@ -2,9 +2,7 @@ local LMP = LibMapPins
 local GPS = LibGPS3
 local Lib3D = Lib3D
 local CCP = COMPASS_PINS
-local LAM = LibAddonMenu2
 local LMD = LibMapData
-
 -------------------------------------------------
 ----- Logger Function                       -----
 -------------------------------------------------
@@ -88,16 +86,18 @@ ScrySpy_SavedVars.digsite_pin_size = ScrySpy_SavedVars.digsite_pin_size or ScryS
 ScrySpy_SavedVars.pin_type = ScrySpy_SavedVars.pin_type or ScrySpy.scryspy_defaults.pin_type
 ScrySpy_SavedVars.digsite_pin_type = ScrySpy_SavedVars.digsite_pin_type or ScrySpy.scryspy_defaults.digsite_pin_type
 ScrySpy_SavedVars.compass_max_distance = ScrySpy_SavedVars.compass_max_distance or ScrySpy.scryspy_defaults.compass_max_distance
-ScrySpy_SavedVars.custom_compass_pin = ScrySpy_SavedVars.custom_compass_pin or ScrySpy.scryspy_defaults.filters[ScrySpy.custom_compass_pin]
-ScrySpy_SavedVars.scryspy_map_pin = ScrySpy_SavedVars.scryspy_map_pin or ScrySpy.scryspy_defaults.filters[ScrySpy.scryspy_map_pin]
-ScrySpy_SavedVars.dig_site_pin = ScrySpy_SavedVars.dig_site_pin or ScrySpy.scryspy_defaults.filters[ScrySpy.dig_site_pin]
 ScrySpy_SavedVars.digsite_spike_color = ScrySpy_SavedVars.digsite_spike_color or ScrySpy.scryspy_defaults.digsite_spike_color
+--[[TODO easy access boolean for whether or not to draw pins, but it's always true?]]--
+ScrySpy_SavedVars.compass_pins_enabled = ScrySpy_SavedVars.compass_pins_enabled or ScrySpy.scryspy_defaults.filters[ScrySpy.custom_compass_pin_type]
+ScrySpy_SavedVars.map_pins_enabled = ScrySpy_SavedVars.map_pins_enabled or ScrySpy.scryspy_defaults.filters[ScrySpy.scryspy_map_pin_type]
+ScrySpy_SavedVars.digsite_pins_enabled = ScrySpy_SavedVars.digsite_pins_enabled or ScrySpy.scryspy_defaults.filters[ScrySpy.digsite_map_pin_type]
 
 -- Existing Local
-local PIN_TYPE = "pinType_Digsite" -- This is changed by LAM now, use ScrySpy.scryspy_map_pin
+local PIN_TYPE = "pinType_Digsite" -- This is changed by LAM now, use ScrySpy.scryspy_map_pin_type
 local PIN_FILTER_NAME = "ScrySpy"
 local PIN_NAME = "Dig Location"
 local PIN_PRIORITY_OFFSET = 1
+local SAVE_VARIABLES_VERSION = 5
 
 -- ScrySpy
 ScrySpy.dig_site_names = {
@@ -134,24 +134,8 @@ end
 
 -- Function to check for empty table
 local function is_empty_or_nil(t)
-  if not t then return true end
-  if type(t) == "table" then
-    if next(t) == nil then
-      return true
-    else
-      return false
-    end
-  elseif type(t) == "string" then
-    if t == nil then
-      return true
-    elseif t == "" then
-      return true
-    else
-      return false
-    end
-  elseif type(t) == "nil" then
-    return true
-  end
+  if t == nil or t == "" then return true end
+  return type(t) == "table" and ZO_IsTableEmpty(t) or false
 end
 
 local function get_digsite_locations(zone)
@@ -169,17 +153,6 @@ end
 ScrySpy.worldControlPool = ZO_ControlPool:New("ScrySpy_WorldPin", ScrySpy_WorldPins)
 ScrySpy.antiquity_dig_sites = {}
 ScrySpy.scrying_antiquities = false
-
-local lastMapTexture
-local mapData
-local function UpdateScrySpyMapData()
-  --internal:dm("Debug", "UpdateScrySpyMapData")
-  if LMD.mapTexture ~= lastMapTexture then
-    lastMapTexture = LMD.mapTexture
-    local zone = LMP:GetZoneAndSubzone(true, false, true)
-    mapData = ScrySpy.get_pin_data(zone)
-  end
-end
 
 local function get_digsite_loc_sv(zone)
   --d(zone)
@@ -201,19 +174,19 @@ local function save_to_sv(locations_table, location)
   local save_location = true
   for num_entry, digsite_loc in ipairs(locations_table) do
     local distance = zo_round(GPS:GetLocalDistanceInMeters(digsite_loc[ScrySpy.loc_index.x_pos], digsite_loc[ScrySpy.loc_index.y_pos], location[ScrySpy.loc_index.x_pos], location[ScrySpy.loc_index.y_pos]))
-    -- ScrySpy.dm("Debug", string.format("save_to_sv from location table distance: %s", distance))
+    -- ScrySpy:dm("Debug", string.format("save_to_sv from location table distance: %s", distance))
     if distance <= 10 then
-      -- ScrySpy.dm("Debug", "less then 10 to close to me")
+      -- ScrySpy:dm("Debug", "less then 10 to close to me")
       return false
     else
-      -- ScrySpy.dm("Debug", "more then 10, far away, save it")
+      -- ScrySpy:dm("Debug", "more then 10, far away, save it")
     end
   end
   return save_location
 end
 
 local function save_dig_site_location()
-  --d("save_dig_site_location")
+  --ScrySpy:dm("Debug", "save_dig_site_location")
   local x_pos, y_pos = GetMapPlayerPosition("player")
   local x_gps, y_gps = GPS:LocalToGlobal(x_pos, y_pos)
   local zone_id, worldX, worldY, worldZ = GetUnitWorldPosition("player")
@@ -242,21 +215,23 @@ local function save_dig_site_location()
     [ScrySpy.loc_index.worldY] = worldY,
     [ScrySpy.loc_index.worldZ] = worldZ,
   }
-  if save_to_sv(dig_sites_table, location) and save_to_sv(dig_sites_sv_table, location) then
-    --ScrySpy.dm("Debug", "Saving Location")
+  local meetsDigsiteTable = save_to_sv(dig_sites_table, location)
+  local meetsDigsiteSavedVariables = save_to_sv(dig_sites_sv_table, location)
+  if meetsDigsiteTable and meetsDigsiteSavedVariables then
+    --ScrySpy:dm("Debug", "Saving Location")
     table.insert(ScrySpy_SavedVars.location_info[zone], location)
-    LMP:RefreshPins(ScrySpy.scryspy_map_pin)
-    CCP:RefreshPins(ScrySpy.custom_compass_pin)
+    LMP:RefreshPins(ScrySpy.scryspy_map_pin_type)
+    CCP:RefreshPins(ScrySpy.custom_compass_pin_type)
     ScrySpy.Draw3DPins()
   else
-    --ScrySpy.dm("Debug", "No need to save location")
+    --ScrySpy:dm("Debug", "No need to save location")
   end
 end
 
 function ScrySpy.RefreshPinLayout()
-  LMP:SetLayoutKey(ScrySpy.scryspy_map_pin, "size", ScrySpy_SavedVars.pin_size)
-  LMP:SetLayoutKey(ScrySpy.scryspy_map_pin, "level", ScrySpy_SavedVars.pin_level + PIN_PRIORITY_OFFSET)
-  LMP:SetLayoutKey(ScrySpy.scryspy_map_pin, "texture", ScrySpy.pin_textures[ScrySpy_SavedVars.pin_type])
+  LMP:SetLayoutKey(ScrySpy.scryspy_map_pin_type, "size", ScrySpy_SavedVars.pin_size)
+  LMP:SetLayoutKey(ScrySpy.scryspy_map_pin_type, "level", ScrySpy_SavedVars.pin_level + PIN_PRIORITY_OFFSET)
+  LMP:SetLayoutKey(ScrySpy.scryspy_map_pin_type, "texture", ScrySpy.pin_textures[ScrySpy_SavedVars.pin_type])
 end
 
 ---------------------------------------
@@ -272,8 +247,10 @@ end
 
 function ScrySpy.Draw3DPins()
   EVENT_MANAGER:UnregisterForUpdate("DigSite")
+  --ScrySpy:dm("Debug", "Draw3DPins")
+  local zone = LMP:GetZoneAndSubzone(true, false, true)
 
-  UpdateScrySpyMapData()
+  local mapData = ScrySpy.get_pin_data(zone) or { }
   -- pseudo_pin_location
   if mapData then
     local worldX, worldZ, worldY = WorldPositionToGuiRender3DPosition(0, 0, 0)
@@ -325,17 +302,17 @@ function ScrySpy.Draw3DPins()
 end
 
 local function OnInteract(event_code, client_interact_result, interact_target_name)
-  --ScrySpy.dm("Debug", "OnInteract Occured")
-  --ScrySpy.dm("Debug", client_interact_result)
+  --ScrySpy:dm("Debug", "OnInteract Occured")
+  --ScrySpy:dm("Debug", client_interact_result)
   local text = zo_strformat(SI_CHAT_MESSAGE_FORMATTER, interact_target_name)
-  --ScrySpy.dm("Debug", text)
+  --ScrySpy:dm("Debug", text)
   if text == ScrySpy.dig_site_names[ScrySpy.effective_lang] then
     save_dig_site_location()
   else
-    --ScrySpy.dm("Debug", "Did not match")
+    --ScrySpy:dm("Debug", "Did not match")
   end
 end
-EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name, EVENT_CLIENT_INTERACT_RESULT, OnInteract)
+EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name .. "_OnInteract", EVENT_CLIENT_INTERACT_RESULT, OnInteract)
 
 function ScrySpy.combine_data(zone)
   ScrySpy_SavedVars.location_info = ScrySpy_SavedVars.location_info or { }
@@ -343,24 +320,24 @@ function ScrySpy.combine_data(zone)
 
   ScrySpy.dig_sites[zone] = ScrySpy.dig_sites[zone] or { }
 
-  local mapData = ScrySpy.dig_sites[zone] or { }
+  local digsiteData = ScrySpy.dig_sites[zone] or { }
   local dig_sites_sv_table = get_digsite_loc_sv(zone) or { }
   for num_entry, digsite_loc in ipairs(dig_sites_sv_table) do
-    if save_to_sv(mapData, digsite_loc) then
-      table.insert(mapData, digsite_loc)
+    if save_to_sv(digsiteData, digsite_loc) then
+      table.insert(digsiteData, digsite_loc)
     end
   end
-  return mapData
+  return digsiteData
 end
 
 -- /script d(zo_round(LibGPS3:GetLocalDistanceInMeters(0.82357305288315, 0.36382120383569, 0.904232442379, 0.78514248132706)))
 function ScrySpy.get_pin_data(zone)
-  --ScrySpy.dm("Debug", "get_pin_data")
+  --ScrySpy:dm("Debug", "get_pin_data")
   local function digsite_in_range(location)
     for key, compas_pin_loc in pairs(ScrySpy.antiquity_dig_sites) do
       local distance = zo_round(GPS:GetLocalDistanceInMeters(compas_pin_loc.x, compas_pin_loc.y, location[ScrySpy.loc_index.x_pos], location[ScrySpy.loc_index.y_pos]))
-      --ScrySpy.dm("Debug", string.format("digsite_in_range distance: %s", distance))
-      --ScrySpy.dm("Debug", string.format("digsite_in_range dig site size: %s", ScrySpy.antiquity_dig_sites[key].size))
+      --ScrySpy:dm("Debug", string.format("digsite_in_range distance: %s", distance))
+      --ScrySpy:dm("Debug", string.format("digsite_in_range dig site size: %s", ScrySpy.antiquity_dig_sites[key].size))
       if distance <= ScrySpy.antiquity_dig_sites[key].size then
         return true
       end
@@ -371,7 +348,7 @@ function ScrySpy.get_pin_data(zone)
   local function in_mod_digsite_pool(main_table, location)
     for _, compas_pin_loc in pairs(main_table) do
       local distance = zo_round(GPS:GetLocalDistanceInMeters(compas_pin_loc[ScrySpy.loc_index.x_pos], compas_pin_loc[ScrySpy.loc_index.y_pos], location[ScrySpy.loc_index.x_pos], location[ScrySpy.loc_index.y_pos]))
-      -- ScrySpy.dm("Debug", string.format("in_mod_digsite_pool distance: %s", distance))
+      -- ScrySpy:dm("Debug", string.format("in_mod_digsite_pool distance: %s", distance))
       if distance <= 10 then
         return true
       end
@@ -391,15 +368,17 @@ function ScrySpy.get_pin_data(zone)
   for num_entry, digsite_loc in ipairs(ScrySpy.dig_sites[zone]) do
     if digsite_in_range(digsite_loc) then
       table.insert(mod_digsite_pool, digsite_loc)
-      -- ScrySpy.dm("Debug", "digsite pool updated")
+      -- ScrySpy:dm("Debug", "digsite pool updated")
     end
   end
   --ScrySpy.show_log = true
 
   local dig_sites_sv_table = get_digsite_loc_sv(zone) or { }
   for num_entry, digsite_loc in ipairs(dig_sites_sv_table) do
-    if digsite_in_range(digsite_loc) and not in_mod_digsite_pool(mod_digsite_pool, digsite_loc) then
-      --ScrySpy.dm("Debug", "digsite pool updated")
+    local digsiteInRange = digsite_in_range(digsite_loc)
+    local withinModDigsitePool = in_mod_digsite_pool(mod_digsite_pool, digsite_loc)
+    if digsiteInRange and not withinModDigsitePool then
+      --ScrySpy:dm("Debug", "digsite pool updated")
       table.insert(mod_digsite_pool, digsite_loc)
     end
   end
@@ -409,7 +388,25 @@ function ScrySpy.get_pin_data(zone)
 end
 
 local function InitializePins()
-  local function MapPinAddCallback(pinType)
+  local map_pin_layout = {
+    level = ScrySpy_SavedVars.pin_level,
+    texture = ScrySpy.pin_textures[ScrySpy_SavedVars.pin_type],
+    size = ScrySpy_SavedVars.pin_size,
+  }
+
+  local pinlayout_compass = {
+    maxDistance = 0.05,
+    texture = ScrySpy.pin_textures[ScrySpy_SavedVars.digsite_pin_type],
+    sizeCallback = function(pin, angle, normalizedAngle, normalizedDistance)
+      if zo_abs(normalizedAngle) > 0.25 then
+        pin:SetDimensions(54 - 24 * zo_abs(normalizedAngle), 54 - 24 * zo_abs(normalizedAngle))
+      else
+        pin:SetDimensions(48, 48)
+      end
+    end,
+  }
+
+  local function map_pin_callback(pinType)
     --[[
     Problem encountered. When standing in the ["skyrim/solitudeoutlawsrefuge_0"]
 
@@ -421,45 +418,38 @@ local function InitializePins()
     meaning the game will look for 1178 and ["craglorn/craglorn_base_0"] which is invalid
     ]]--
     --d(zone)
-   UpdateScrySpyMapData()
+    if LMD.isWorld then
+      return
+    end
+
+    if not LMP:IsEnabled(pinType) then
+      return
+    end
+
+    local zone = LMP:GetZoneAndSubzone(true, false, true)
+    local mapData = ScrySpy.get_pin_data(zone) or { }
     if mapData then
       for index, pinData in pairs(mapData) do
-        LMP:CreatePin(ScrySpy.scryspy_map_pin, pinData, pinData[ScrySpy.loc_index.x_pos], pinData[ScrySpy.loc_index.y_pos])
+        LMP:CreatePin(ScrySpy.scryspy_map_pin_type, pinData, pinData[ScrySpy.loc_index.x_pos], pinData[ScrySpy.loc_index.y_pos])
       end
     end
   end
 
-  local function PinTypeAddCallback(pinType)
-    if GetMapType() <= MAPTYPE_ZONE and LMP:IsEnabled(pinType) then
-      MapPinAddCallback(pinType)
+  local function compass_pin_callback()
+    if LMD.isWorld then
+      --ScrySpy:dm("Debug", "Tamriel or Aurbis reached, stopped")
+      return
     end
-  end
 
-  local lmp_pin_layout = {
-    level = ScrySpy_SavedVars.pin_level,
-    texture = ScrySpy.pin_textures[ScrySpy_SavedVars.pin_type],
-    size = ScrySpy_SavedVars.pin_size,
-  }
+    if not ScrySpy_SavedVars.compass_pins_enabled then
+      return
+    end
 
-  local pinlayout_compass = {
-    maxDistance = 0.05,
-    texture = ScrySpy.pin_textures[ScrySpy_SavedVars.custom_compass_pin],
-    sizeCallback = function(pin, angle, normalizedAngle, normalizedDistance)
-      if zo_abs(normalizedAngle) > 0.25 then
-        pin:SetDimensions(54 - 24 * zo_abs(normalizedAngle), 54 - 24 * zo_abs(normalizedAngle))
-      else
-        pin:SetDimensions(48, 48)
-      end
-    end,
-  }
-
-  local function compass_callback()
-    if GetMapType() <= MAPTYPE_ZONE and ScrySpy_SavedVars.custom_compass_pin then
-      UpdateScrySpyMapData()
-      if mapData then
-        for _, pinData in ipairs(mapData) do
-          CCP.pinManager:CreatePin(ScrySpy.custom_compass_pin, pinData, pinData[ScrySpy.loc_index.x_pos], pinData[ScrySpy.loc_index.y_pos])
-        end
+    local zone = LMP:GetZoneAndSubzone(true, false, true)
+    local mapData = ScrySpy.get_pin_data(zone) or { }
+    if mapData then
+      for _, pinData in ipairs(mapData) do
+        CCP.pinManager:CreatePin(ScrySpy.custom_compass_pin_type, pinData, pinData[ScrySpy.loc_index.x_pos], pinData[ScrySpy.loc_index.y_pos])
       end
     end
   end
@@ -477,11 +467,11 @@ local function InitializePins()
     end
   }
 
-  LMP:AddPinType(ScrySpy.scryspy_map_pin, function() PinTypeAddCallback(ScrySpy.scryspy_map_pin) end, nil, lmp_pin_layout, pinTooltipCreator)
+  LMP:AddPinType(ScrySpy.scryspy_map_pin_type, function() map_pin_callback(ScrySpy.scryspy_map_pin_type) end, nil, map_pin_layout, pinTooltipCreator)
   ScrySpy.RefreshPinLayout()
-  LMP:RefreshPins(ScrySpy.scryspy_map_pin)
-  CCP:AddCustomPin(ScrySpy.custom_compass_pin, compass_callback, pinlayout_compass)
-  CCP:RefreshPins(ScrySpy.custom_compass_pin)
+  LMP:RefreshPins(ScrySpy.scryspy_map_pin_type)
+  CCP:AddCustomPin(ScrySpy.custom_compass_pin_type, compass_pin_callback, pinlayout_compass)
+  CCP:RefreshPins(ScrySpy.custom_compass_pin_type)
 end
 
 local function build_zone_data()
@@ -521,115 +511,179 @@ local function reset_zone_data()
   ScrySpy_SavedVars.cleaned_data_store = nil
 end
 
-local function OnPlayerActivated(eventCode)
+local function OnPlayerActivated(eventCode, initial)
+  --ScrySpy:dm("Debug", "OnPlayerActivated Occured")
   ScrySpy.RefreshPinLayout()
-  CCP.pinLayouts[ScrySpy.custom_compass_pin].maxDistance = ScrySpy_SavedVars.compass_max_distance
-  CCP.pinLayouts[ScrySpy.custom_compass_pin].texture = ScrySpy.pin_textures[ScrySpy_SavedVars.pin_type]
-  CCP:RefreshPins(ScrySpy.custom_compass_pin)
+  CCP.pinLayouts[ScrySpy.custom_compass_pin_type].maxDistance = ScrySpy_SavedVars.compass_max_distance
+  CCP.pinLayouts[ScrySpy.custom_compass_pin_type].texture = ScrySpy.pin_textures[ScrySpy_SavedVars.pin_type]
+  CCP:RefreshPins(ScrySpy.custom_compass_pin_type)
   ScrySpy.update_antiquity_dig_sites()
   ScrySpy.Draw3DPins()
   EVENT_MANAGER:UnregisterForEvent(ScrySpy.addon_name .. "_InitPins", EVENT_PLAYER_ACTIVATED)
 end
 EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name .. "_InitPins", EVENT_PLAYER_ACTIVATED, OnPlayerActivated)
 
+function ScrySpy.disable_active_dig_site_info()
+  ScrySpy.scrying_antiquities = false
+  -- also disable compas pins
+  ScrySpy_SavedVars.compass_pins_enabled = false
+  -- also disable map pins
+  --[[TODO ScrySpy_SavedVars.map_pins_enabled is not used because of LMP:Enable() ]]--
+  ScrySpy_SavedVars.map_pins_enabled = false
+  -- release all the world objects
+  ScrySpy.worldControlPool:ReleaseAllObjects()
+  LMP:Disable(ScrySpy.scryspy_map_pin_type)
+  ScrySpy.Hide3DPins()
+end
+
+function ScrySpy.enable_active_dig_site_info()
+  ScrySpy.scrying_antiquities = true
+  -- also enable compas pins
+  ScrySpy_SavedVars.compass_pins_enabled = true
+  -- also enable map pins
+  --[[TODO ScrySpy_SavedVars.map_pins_enabled is not used because of LMP:Enable() ]]--
+  ScrySpy_SavedVars.map_pins_enabled = true
+  LMP:Enable(ScrySpy.scryspy_map_pin_type)
+  ScrySpy.Draw3DPins()
+end
+
 function ScrySpy.update_active_dig_sites()
-  --ScrySpy.dm("Debug", "update_active_dig_sites")
-  if #ScrySpy.antiquity_dig_sites >= 1 then
-    ScrySpy.scrying_antiquities = true
-    -- also enable compas pins
-    ScrySpy_SavedVars.custom_compass_pin = true
-    -- also enable map pins
-    ScrySpy_SavedVars.scryspy_map_pin = true
-    LMP:Enable(ScrySpy.scryspy_map_pin)
+  if NonContiguousCount(ScrySpy.antiquity_dig_sites) >= 1 then
+    ScrySpy.enable_active_dig_site_info()
   else
-    ScrySpy.scrying_antiquities = false
-    -- also disable compas pins
-    ScrySpy_SavedVars.custom_compass_pin = false
-    -- also disable map pins
-    ScrySpy_SavedVars.scryspy_map_pin = false
-    -- release all the world objects
-    ScrySpy.worldControlPool:ReleaseAllObjects()
-    LMP:Disable(ScrySpy.scryspy_map_pin)
+    ScrySpy.disable_active_dig_site_info()
   end
 
-  LMP:RefreshPins(ScrySpy.scryspy_map_pin)
-  CCP:RefreshPins(ScrySpy.custom_compass_pin)
-
-  if ScrySpy.scrying_antiquities then
-    ScrySpy.Draw3DPins()
-  else
-    ScrySpy.Hide3DPins()
-  end
+  LMP:RefreshPins(ScrySpy.scryspy_map_pin_type)
+  CCP:RefreshPins(ScrySpy.custom_compass_pin_type)
 end
 
 -- MAP_PIN_TYPE_TRACKED_ANTIQUITY_DIG_SITE = 42
+-- LibMapPins
 function ScrySpy.update_antiquity_dig_sites()
-  ScrySpy.should_update_digsites = true
-  --ScrySpy.dm("Debug", "update_antiquity_dig_sites")
-  --ScrySpy.dm("Debug", LMP:GetZoneAndSubzone(true, false, true))
-  local map_pin_keys = LMP.pinManager.m_keyToPinMapping["antiquityDigSite"]
-  local polygon_information = LMP.pinManager["m_Active"]
-  local panAndZoomInfo = ZO_WorldMap_GetPanAndZoom()
-  local zoomFactor = -1
+  local function mapZoomFactorToInt(panAndZoomInfo)
+    if panAndZoomInfo and panAndZoomInfo.currentNormalizedZoom ~= nil then
+      local zoomFactor = panAndZoomInfo.currentNormalizedZoom
+      zoomFactor = math.min(1, math.max(0, zoomFactor))
+      local sizeMapping = {
+        [0] = 10,
+        [1] = 10,
+        [2] = 9,
+        [3] = 8,
+        [4] = 7,
+        [5] = 6,
+        [6] = 5,
+        [7] = 4,
+        [8] = 3,
+        [9] = 2,
+        [10] = 1,
+      }
+      local zoomFactorMapping = {
+        [0] = 2.9,
+        [1] = 3.7,
+        [2] = 3.4,
+        [3] = 3.0,
+        [4] = 2.6,
+        [5] = 2.2,
+        [6] = 1.7,
+        [7] = 1.1,
+        [8] = 1.5,
+        [9] = -0.2,
+        [10] = -0.9,
+      }
+      local size = sizeMapping[math.floor(zoomFactor * 10)]
+      local zfSize = zoomFactorMapping[math.floor(zoomFactor * 10)]
+      return size, zfSize
+    else
+      return 1
+    end
+  end
 
+  -- setup variables
+  local digsiteIndexes = {}
   ScrySpy.antiquity_dig_sites = {}
 
-  for _, polygon_location in pairs(map_pin_keys) do
-    for _, pin_information in pairs(polygon_location) do
+  local function get_digsite_indexes()
+    local digsiteKeys = LMP.pinManager.m_keyToPinMapping["antiquityDigSite"]
+    for outerKey, outerValue in pairs(digsiteKeys) do
+      for key, value in pairs(outerValue) do
+        table.insert(digsiteIndexes, value)
+      end
+    end
+    return NonContiguousCount(digsiteIndexes) >= 1
+  end
+
+  --ScrySpy:dm("Debug", "update_antiquity_dig_sites")
+  --ScrySpy:dm("Debug", LMP:GetZoneAndSubzone(true, false, true))
+  -- LibMapPins
+  local hasActiveDigsites = get_digsite_indexes()
+  if not hasActiveDigsites then
+    ScrySpy.has_active_digsites = false
+  else
+    ScrySpy.has_active_digsites = true
+    -- /script d(LibMapPins.pinManager.m_keyToPinMapping["antiquityDigSite"])
+    --ScrySpy:dm("Debug", map_pin_keys)
+    --local _, blobIndex = next(map_pin_keys)
+    --ScrySpy:dm("Debug", blobIndex)
+    --local polygon_information = LMP.pinManager["m_Active"][blobIndex]
+    --ScrySpy:dm("Debug", polygon_information)
+    local polygon_information = LMP.pinManager["m_Active"]
+    local panAndZoomInfo = ZO_WorldMap_GetPanAndZoom()
+    local zoomFactor, zSize = mapZoomFactorToInt(panAndZoomInfo)
+    local blob_key
+
+    for _, pinIndex in pairs(digsiteIndexes) do
+      local blobNormalizedX = polygon_information[pinIndex]["normalizedX"]
+      local blobNormalizedY = polygon_information[pinIndex]["normalizedY"]
       local temp_compas_pin_location = {}
-      temp_compas_pin_location.x = polygon_information[pin_information]["normalizedX"]
-      temp_compas_pin_location.y = polygon_information[pin_information]["normalizedY"]
-      blob_key = polygon_information[pin_information]["polygonBlobKey"]
+      temp_compas_pin_location.x = blobNormalizedX
+      temp_compas_pin_location.y = blobNormalizedY
+      blob_key = polygon_information[pinIndex]["polygonBlobKey"]
       if blob_key then
         -- set to 230 by default, then update as long as the control exists
+        local blobSize = 0
+        local blobMod = 0
         temp_compas_pin_location.size = 290
         local my_control = WINDOW_MANAGER:GetControlByName("ZO_WorldMapContainerPinPolygonBlob", blob_key)
         if my_control then
-          zoomFactor = 10
           local get_dimensions = my_control:GetDimensions()
-          if panAndZoomInfo and panAndZoomInfo.currentNormalizedZoom then
-            --ScrySpy.dm("Debug", panAndZoomInfo.currentNormalizedZoom)
-            zoomFactor = 290 - ((panAndZoomInfo.currentNormalizedZoom * 10) * 10)
-            --ScrySpy.dm("Debug", string.format("zoomFactor %s", zoomFactor))
-          end
           if get_dimensions ~= nil then
-            -- ScrySpy.dm("Debug", string.format("update_antiquity_dig_sites get_dimensions", get_dimensions))
-            temp_compas_pin_location.size = zo_round(math.max(get_dimensions)) + zoomFactor
+            blobSize = get_dimensions * zoomFactor
+            blobMod = get_dimensions * zSize
+            temp_compas_pin_location.size = blobSize - blobMod
           else
-            --ScrySpy.dm("Debug", "GetDimensions Unavailable")
-            ScrySpy.should_update_digsites = false
+            --ScrySpy:dm("Debug", "GetDimensions Unavailable")
+            ScrySpy.has_active_digsites = false
           end
         else
-          --ScrySpy.dm("Debug", "GetControlByName Unavailable")
-          ScrySpy.should_update_digsites = false
+          --ScrySpy:dm("Debug", "GetControlByName Unavailable")
+          ScrySpy.has_active_digsites = false
         end
         ScrySpy.antiquity_dig_sites[blob_key] = temp_compas_pin_location
       else
-        --ScrySpy.dm("Debug", "Blog Key Unavailable")
-        ScrySpy.should_update_digsites = false
+        --ScrySpy:dm("Debug", "Blog Key Unavailable")
+        ScrySpy.has_active_digsites = false
       end
     end
   end
-  if ScrySpy.should_update_digsites then
-    ScrySpy.update_active_dig_sites()
-  end
+  ScrySpy.update_active_dig_sites()
 end
 
 local function OnTrackingUpdate(eventCode)
-  --ScrySpy.dm("Debug", "TrackingUpdate Occured")
+  --ScrySpy:dm("Debug", "TrackingUpdate Occured")
   ScrySpy.update_antiquity_dig_sites()
 end
-EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name .. "_DigSiteLocations", EVENT_ANTIQUITY_TRACKING_UPDATE, OnTrackingUpdate)
+EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name .. "_OnTrackingUpdate", EVENT_ANTIQUITY_TRACKING_UPDATE, OnTrackingUpdate)
 
 local function OnRevealAntiquity(eventCode)
-  --ScrySpy.dm("Debug", "RevealAntiquity Occured")
+  --ScrySpy:dm("Debug", "RevealAntiquity Occured")
   ScrySpy.update_antiquity_dig_sites()
-  if not ScrySpy.should_update_digsites then
-    ScrySpy.dm("Info", "Digsite Compass Pins Unavailable.")
-    ScrySpy.dm("Info", "Use /ssrefresh when near Digsites to show pins.")
+  if not ScrySpy.has_active_digsites then
+    ScrySpy:dm("Info", "Digsite Compass Pins Unavailable.")
+    ScrySpy:dm("Info", "Use /ssrefresh when near Digsites to show pins.")
   end
 end
-EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name .. "_DigSiteLocations", EVENT_REVEAL_ANTIQUITY_DIG_SITES_ON_MAP, OnRevealAntiquity)
+EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name .. "_OnRevealAntiquity", EVENT_REVEAL_ANTIQUITY_DIG_SITES_ON_MAP, OnRevealAntiquity)
 
 local function purge_duplicate_data()
   local all_savedvariables_data = ZO_DeepTableCopy(ScrySpy_SavedVars["location_info"])
@@ -645,7 +699,7 @@ local function purge_duplicate_data()
         end
       end
     else
-      --ScrySpy.dm("Debug", "ScrySpy nothing to loop over")
+      --ScrySpy:dm("Debug", "ScrySpy nothing to loop over")
       ScrySpy_SavedVars.location_info[zone] = all_savedvariables_data[zone] or {}
     end
   end
@@ -653,7 +707,7 @@ end
 
 local function OnLoad(eventCode, addOnName)
   if addOnName ~= ScrySpy.addon_name then return end
-    ScrySpy:dm("Debug", "OnAddOnLoaded")
+  --ScrySpy:dm("Debug", "OnLoad")
   -- turn the top level control into a 3d control
   ScrySpy_WorldPins:Create3DRenderSpace()
 
@@ -675,7 +729,7 @@ local function OnLoad(eventCode, addOnName)
     end
   end)
 
-  if ScrySpy_SavedVars.version ~= 4 then
+  if ScrySpy_SavedVars.version ~= SAVE_VARIABLES_VERSION then
     local temp_locations
     if ScrySpy_SavedVars.version == nil then ScrySpy_SavedVars.version = 1 end
     if ScrySpy_SavedVars.version >= 2 then
@@ -684,7 +738,7 @@ local function OnLoad(eventCode, addOnName)
       end
     end
     ScrySpy_SavedVars = { }
-    ScrySpy_SavedVars.version = 4
+    ScrySpy_SavedVars.version = SAVE_VARIABLES_VERSION
     ScrySpy_SavedVars.location_info = temp_locations or { }
     ScrySpy_SavedVars.pin_level = ScrySpy_SavedVars.pin_level or ScrySpy.scryspy_defaults.pin_level
     ScrySpy_SavedVars.pin_size = ScrySpy_SavedVars.pin_size or ScrySpy.scryspy_defaults.pin_size
@@ -692,10 +746,10 @@ local function OnLoad(eventCode, addOnName)
     ScrySpy_SavedVars.pin_type = ScrySpy_SavedVars.pin_type or ScrySpy.scryspy_defaults.pin_type
     ScrySpy_SavedVars.digsite_pin_type = ScrySpy_SavedVars.digsite_pin_type or ScrySpy.scryspy_defaults.digsite_pin_type
     ScrySpy_SavedVars.compass_max_distance = ScrySpy_SavedVars.compass_max_distance or ScrySpy.scryspy_defaults.compass_max_distance
-    ScrySpy_SavedVars.custom_compass_pin = ScrySpy_SavedVars.custom_compass_pin or ScrySpy.scryspy_defaults.filters[ScrySpy.custom_compass_pin]
-    ScrySpy_SavedVars.scryspy_map_pin = ScrySpy_SavedVars.scryspy_map_pin or ScrySpy.scryspy_defaults.filters[ScrySpy.scryspy_map_pin]
-    ScrySpy_SavedVars.dig_site_pin = ScrySpy_SavedVars.dig_site_pin or ScrySpy.scryspy_defaults.filters[ScrySpy.dig_site_pin]
-    if ScrySpy_SavedVars.version >= 4 then
+    ScrySpy_SavedVars.compass_pins_enabled = ScrySpy_SavedVars.compass_pins_enabled or ScrySpy.scryspy_defaults.filters[ScrySpy.custom_compass_pin_type]
+    ScrySpy_SavedVars.map_pins_enabled = ScrySpy_SavedVars.map_pins_enabled or ScrySpy.scryspy_defaults.filters[ScrySpy.scryspy_map_pin_type]
+    ScrySpy_SavedVars.digsite_pins_enabled = ScrySpy_SavedVars.digsite_pins_enabled or ScrySpy.scryspy_defaults.filters[ScrySpy.digsite_map_pin_type]
+    if ScrySpy_SavedVars.version >= SAVE_VARIABLES_VERSION then
       ScrySpy_SavedVars.digsite_spike_color = ScrySpy_SavedVars.digsite_spike_color or ScrySpy.scryspy_defaults.digsite_spike_color
     else
       ScrySpy_SavedVars.digsite_spike_color = ScrySpy.scryspy_defaults.digsite_spike_color

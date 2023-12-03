@@ -45,12 +45,12 @@ scryspy_defaults = {
 ScrySpy_SavedVars.show_pins
 ]]--
 ScrySpy.addon_name = "ScrySpy"
-ScrySpy.addon_version = "1.40"
+ScrySpy.addon_version = "1.42"
 ScrySpy.addon_website = "https://www.esoui.com/downloads/info2647-ScrySpy.html"
-ScrySpy.custom_compass_pin = "compass_digsite" -- custom compas pin pin type
-ScrySpy.scryspy_map_pin = "scryspy_map_pin"
-ScrySpy.dig_site_pin = "dig_site_pin"
-ScrySpy.should_update_digsites = true
+ScrySpy.custom_compass_pin_type = "compass_digsite" -- custom compas pin pin type
+ScrySpy.scryspy_map_pin_type = "scryspy_map_pin"
+ScrySpy.digsite_map_pin_type = "dig_site_pin"
+ScrySpy.has_active_digsites = false
 
 ScrySpy.pin_textures = {
   [1] = "ScrySpy/img/spade_shovel_redx_marker.dds",
@@ -99,9 +99,9 @@ ScrySpy.scryspy_defaults = {
   ["digsite_pin_type"] = 1,
   ["compass_max_distance"] = 0.05,
   ["filters"] = {
-    [ScrySpy.custom_compass_pin] = true, -- toggle show pin on compass
-    [ScrySpy.scryspy_map_pin] = true, -- toggle show pin on world map
-    [ScrySpy.dig_site_pin] = true, -- toggle show 3d pin in overland
+    [ScrySpy.custom_compass_pin_type] = true, -- toggle show pin on compass
+    [ScrySpy.scryspy_map_pin_type] = true, -- toggle show pin on world map
+    [ScrySpy.digsite_map_pin_type] = true, -- toggle show 3d pin in overland
   },
   ["digsite_spike_color"] = {
     [1] = 0.0862745121,
