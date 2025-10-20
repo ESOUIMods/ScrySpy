@@ -1,6 +1,5 @@
 local LMP = LibMapPins
 local GPS = LibGPS3
-local Lib3D = Lib3D
 local CCP = COMPASS_PINS
 local LMD = LibMapData
 -------------------------------------------------
@@ -99,6 +98,14 @@ local PIN_NAME = "Dig Location"
 local PIN_PRIORITY_OFFSET = 1
 local SAVE_VARIABLES_VERSION = 5
 
+---------------------------------------
+----- Camera RenderSpace Setup -----
+---------------------------------------
+
+-- Create the 3D render space control used to query the active camera transform
+ScrySpy.cameraControl = CreateControl("ScrySpy_CameraMeasurementControl", GuiRoot, CT_CONTROL)
+ScrySpy.cameraControl:Create3DRenderSpace()
+
 -- ScrySpy
 ScrySpy.dig_site_names = {
   ["de"] = "Ausgrabungsstätte",
@@ -122,20 +129,21 @@ ScrySpy.loc_index = {
   worldZ = 7,
 }
 
-local function is_in(search_value, search_table)
-  for k, v in pairs(search_table) do
-    if search_value == v then return true end
-    if type(search_value) == "string" then
-      if string.find(string.lower(v), string.lower(search_value)) then return true end
-    end
-  end
-  return false
-end
-
 -- Function to check for empty table
 local function is_empty_or_nil(t)
   if t == nil or t == "" then return true end
   return type(t) == "table" and ZO_IsTableEmpty(t) or false
+end
+
+local function is_in(search_value, search_table)
+    if is_empty_or_nil(search_value) then return false end
+    for k, v in pairs(search_table) do
+        if search_value == v then return true end
+        if type(search_value) == "string" then
+            if string.find(string.lower(v), string.lower(search_value)) then return true end
+        end
+    end
+    return false
 end
 
 local function get_digsite_locations(zone)
@@ -238,6 +246,16 @@ end
 ----- Lib3D                       -----
 ---------------------------------------
 
+function ScrySpy:GetCameraRenderSpace()
+  local measurementControl = self.cameraControl
+  Set3DRenderSpaceToCurrentCamera(measurementControl:GetName())
+  local x, y, z = measurementControl:Get3DRenderSpaceOrigin()
+  local forwardX, forwardY, forwardZ = measurementControl:Get3DRenderSpaceForward()
+  local rightX, rightY, rightZ = measurementControl:Get3DRenderSpaceRight()
+  local upX, upY, upZ = measurementControl:Get3DRenderSpaceUp()
+  return x, y, z, forwardX, forwardY, forwardZ, rightX, rightY, rightZ, upX, upY, upZ
+end
+
 function ScrySpy.Hide3DPins()
   -- remove the on update handler and hide the ScrySpy.dig_site_pin
   EVENT_MANAGER:UnregisterForUpdate("DigSite")
@@ -288,7 +306,7 @@ function ScrySpy.Draw3DPins()
 
     -- don't do that every single frame. it's not necessary
     EVENT_MANAGER:RegisterForUpdate("DigSite", 100, function()
-      local x, y, z, forwardX, forwardY, forwardZ, rightX, rightY, rightZ, upX, upY, upZ = Lib3D:GetCameraRenderSpace()
+      local x, y, z, forwardX, forwardY, forwardZ, rightX, rightY, rightZ, upX, upY, upZ = ScrySpy:GetCameraRenderSpace()
       for key, pinControl in pairs(activeObjects) do
         for i = 1, pinControl:GetNumChildren() do
           local textureControl = pinControl:GetChild(i)
@@ -705,6 +723,34 @@ local function purge_duplicate_data()
   end
 end
 
+---------------------------------------
+----- Zone / World Change Handling -----
+---------------------------------------
+
+local function OnPlayerActivated2()
+  local zoneId = GetZoneId(GetUnitZoneIndex("player"))
+  ScrySpy:dm("Debug", string.format("Player activated in zone %d", zoneId))
+
+  if ScrySpy.scrying_antiquities then
+    ScrySpy.Draw3DPins()
+  else
+    ScrySpy.Hide3DPins()
+  end
+end
+
+local function OnZoneChanged(_, unitTag, newZoneName, newSubZoneName, newZoneId, oldZoneId)
+  if unitTag ~= "player" then return end
+  ScrySpy:dm("Debug", string.format("Zone changed: %s → %s", oldZoneId or "?", newZoneId or "?"))
+
+  if ScrySpy.scrying_antiquities then
+    ScrySpy.Draw3DPins()
+  else
+    ScrySpy.Hide3DPins()
+  end
+end
+EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name .. "_PlayerActivated", EVENT_PLAYER_ACTIVATED, OnPlayerActivated2)
+EVENT_MANAGER:RegisterForEvent(ScrySpy.addon_name .. "_ZoneChanged", EVENT_ZONE_CHANGED, OnZoneChanged)
+
 local function OnLoad(eventCode, addOnName)
   if addOnName ~= ScrySpy.addon_name then return end
   --ScrySpy:dm("Debug", "OnLoad")
@@ -717,17 +763,6 @@ local function OnLoad(eventCode, addOnName)
   HUD_UI_SCENE:AddFragment(fragment)
   HUD_SCENE:AddFragment(fragment)
   LOOT_SCENE:AddFragment(fragment)
-
-  -- register a callback, so we know when to start/stop displaying the ScrySpy.dig_site_pin
-  Lib3D:RegisterWorldChangeCallback("DigSite", function(identifier, zoneIndex, isValidZone, newZone)
-    if not newZone then return end
-
-    if ScrySpy.scrying_antiquities then
-      ScrySpy.Draw3DPins()
-    else
-      ScrySpy.Hide3DPins()
-    end
-  end)
 
   if ScrySpy_SavedVars.version ~= SAVE_VARIABLES_VERSION then
     local temp_locations

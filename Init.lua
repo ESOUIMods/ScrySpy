@@ -4,14 +4,20 @@ ScrySpy = {}
 ----- early helper                          -----
 -------------------------------------------------
 
+local function is_empty_or_nil(t)
+  if t == nil or t == "" then return true end
+  return type(t) == "table" and ZO_IsTableEmpty(t) or false
+end
+
 local function is_in(search_value, search_table)
-  for k, v in pairs(search_table) do
-    if search_value == v then return true end
-    if type(search_value) == "string" then
-      if string.find(string.lower(v), string.lower(search_value)) then return true end
+    if is_empty_or_nil(search_value) then return false end
+    for k, v in pairs(search_table) do
+        if search_value == v then return true end
+        if type(search_value) == "string" then
+            if string.find(string.lower(v), string.lower(search_value)) then return true end
+        end
     end
-  end
-  return false
+    return false
 end
 
 -------------------------------------------------
@@ -45,7 +51,7 @@ scryspy_defaults = {
 ScrySpy_SavedVars.show_pins
 ]]--
 ScrySpy.addon_name = "ScrySpy"
-ScrySpy.addon_version = "1.43"
+ScrySpy.addon_version = "1.44"
 ScrySpy.addon_website = "https://www.esoui.com/downloads/info2647-ScrySpy.html"
 ScrySpy.custom_compass_pin_type = "compass_digsite" -- custom compas pin pin type
 ScrySpy.scryspy_map_pin_type = "scryspy_map_pin"
